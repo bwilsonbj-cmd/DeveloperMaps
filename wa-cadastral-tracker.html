@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WA Cadastral Job Tracker</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css"/>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f4f4f2;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+  #header{background:#1a2e4a;color:#fff;padding:10px 16px;display:flex;align-items:center;gap:12px;flex-shrink:0;z-index:1000}
+  #header h1{font-size:16px;font-weight:500;letter-spacing:.01em}
+  #header .subtitle{font-size:12px;opacity:.65;margin-top:1px}
+  #header .spacer{flex:1}
+  #header button{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);color:#fff;padding:6px 12px;border-radius:6px;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:6px}
+  #header button:hover{background:rgba(255,255,255,.2)}
+  #app{display:flex;flex:1;overflow:hidden}
+  #sidebar{width:320px;background:#fff;border-right:1px solid #e0ddd5;display:flex;flex-direction:column;overflow:hidden;flex-shrink:0;transition:width .25s}
+  #sidebar.collapsed{width:0}
+  #sidebar-inner{width:320px;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;height:100%}
+  #map{flex:1;z-index:1}
+  .section{border-bottom:1px solid #e8e5de}
+  .section-header{display:flex;align-items:center;gap:8px;padding:10px 14px;cursor:pointer;user-select:none;background:#faf9f7}
+  .section-header:hover{background:#f4f2ed}
+  .section-header .label{font-size:13px;font-weight:500;color:#2c2c2a;flex:1}
+  .section-header .count{font-size:11px;background:#e8e5de;color:#5f5e5a;padding:2px 7px;border-radius:10px}
+  .section-header .toggle{font-size:18px;color:#888;transition:transform .2s}
+  .section-header.open .toggle{transform:rotate(180deg)}
+  .section-body{display:none;padding:10px 14px}
+  .section-body.open{display:block}
+  .layer-row{display:flex;align-items:center;gap:10px;padding:5px 0;border-bottom:1px solid #f0ede6}
+  .layer-row:last-child{border-bottom:none}
+  .layer-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+  .layer-label{font-size:13px;color:#2c2c2a;flex:1}
+  .layer-sub{font-size:11px;color:#888;margin-top:1px}
+  .switch{position:relative;width:32px;height:18px;flex-shrink:0}
+  .switch input{opacity:0;width:0;height:0}
+  .slider-sw{position:absolute;inset:0;background:#ccc;border-radius:9px;cursor:pointer;transition:.2s}
+  .slider-sw:before{content:'';position:absolute;width:12px;height:12px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s}
+  input:checked+.slider-sw{background:#1a7a5e}
+  input:checked+.slider-sw:before{transform:translateX(14px)}
+  .filter-group{margin-bottom:10px}
+  .filter-group label{font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:4px}
+  .filter-group input,.filter-group select{width:100%;padding:6px 9px;border:1px solid #ddd;border-radius:6px;font-size:13px;background:#fff;color:#2c2c2a}
+  .filter-group input:focus,.filter-group select:focus{outline:none;border-color:#1a7a5e}
+  .btn{display:inline-flex;align-items:center;gap:6px;padding:7px 13px;border-radius:6px;font-size:13px;cursor:pointer;border:1px solid #ddd;background:#fff;color:#2c2c2a}
+  .btn:hover{background:#f4f2ed}
+  .btn.primary{background:#1a2e4a;color:#fff;border-color:#1a2e4a}
+  .btn.primary:hover{background:#243d61}
+  .btn.success{background:#1a7a5e;color:#fff;border-color:#1a7a5e}
+  .btn.success:hover{background:#15624c}
+  .btn.danger{background:#fff;color:#c0392b;border-color:#e0b0ac}
+  .btn.danger:hover{background:#fdf0ef}
+  .btn-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+  .stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+  .stat-card{background:#f4f2ed;border-radius:8px;padding:10px;text-align:center}
+  .stat-card .val{font-size:22px;font-weight:500;color:#1a2e4a}
+  .stat-card .lbl{font-size:11px;color:#888;margin-top:2px}
+  .lot-list{max-height:200px;overflow-y:auto}
+  .lot-item{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #f0ede6;font-size:12px;cursor:pointer}
+  .lot-item:hover{background:#faf9f7}
+  .lot-item:last-child{border-bottom:none}
+  .lot-badge{padding:2px 7px;border-radius:4px;font-size:11px;font-weight:500}
+  .lot-badge.completed{background:#d4efdf;color:#1a7a5e}
+  .lot-badge.pending{background:#fdebd0;color:#d35400}
+  .lot-badge.inprogress{background:#d6eaf8;color:#1a5276}
+  .entity-item{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #f0ede6;font-size:13px}
+  .entity-item:last-child{border-bottom:none}
+  .entity-avatar{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;flex-shrink:0}
+  .av-blue{background:#d6eaf8;color:#1a5276}
+  .av-green{background:#d4efdf;color:#1a7a5e}
+  .av-amber{background:#fdebd0;color:#d35400}
+  .empty{text-align:center;padding:20px;color:#aaa;font-size:13px}
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9000;display:none;align-items:center;justify-content:center}
+  .modal-overlay.open{display:flex}
+  .modal{background:#fff;border-radius:12px;width:460px;max-height:90vh;overflow-y:auto;padding:20px;position:relative}
+  .modal h2{font-size:16px;font-weight:500;color:#1a2e4a;margin-bottom:16px}
+  .form-row{margin-bottom:12px}
+  .form-row label{font-size:12px;color:#666;display:block;margin-bottom:4px}
+  .form-row input,.form-row select,.form-row textarea{width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:6px;font-size:13px}
+  .form-row textarea{resize:vertical;min-height:70px}
+  .tag-pill{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:12px;font-size:11px;margin:2px;cursor:pointer}
+  .tag-pill.builder{background:#d6eaf8;color:#1a5276}
+  .tag-pill.developer{background:#d4efdf;color:#1a7a5e}
+  .chart-bar{height:18px;background:#d6eaf8;border-radius:3px;margin:3px 0;display:flex;align-items:center;padding-left:6px;font-size:11px;color:#1a5276;font-weight:500;transition:width .4s}
+  .tab-bar{display:flex;border-bottom:1px solid #e0ddd5;background:#faf9f7}
+  .tab{flex:1;text-align:center;padding:8px 4px;font-size:12px;cursor:pointer;border-bottom:2px solid transparent;color:#888}
+  .tab.active{color:#1a2e4a;font-weight:500;border-bottom-color:#1a2e4a}
+  .tab-content{display:none}
+  .tab-content.active{display:block;padding:12px 14px}
+  ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:#f0ede6}::-webkit-scrollbar-thumb{background:#ccc;border-radius:2px}
+  .popup-title{font-size:14px;font-weight:500;color:#1a2e4a;margin-bottom:6px}
+  .popup-row{font-size:12px;color:#555;margin:3px 0;display:flex;gap:6px}
+  .popup-row strong{color:#2c2c2a;min-width:70px}
+  .popup-btn{margin-top:8px;padding:5px 10px;background:#1a2e4a;color:#fff;border:none;border-radius:5px;font-size:12px;cursor:pointer}
+  #toggle-sidebar{position:absolute;left:0;top:50%;transform:translateY(-50%);z-index:500;background:#1a2e4a;color:#fff;border:none;width:20px;height:40px;border-radius:0 6px 6px 0;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px}
+  #map-container{position:relative;flex:1;overflow:hidden}
+  .map-legend{position:absolute;bottom:24px;right:10px;background:rgba(255,255,255,.95);border-radius:8px;padding:10px 14px;z-index:400;font-size:11px;border:1px solid #ddd;min-width:130px}
+  .legend-row{display:flex;align-items:center;gap:7px;margin:4px 0;color:#333}
+  .legend-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+  .map-stats-bar{position:absolute;top:10px;left:10px;display:flex;gap:8px;z-index:400;pointer-events:none}
+  .map-chip{background:rgba(255,255,255,.95);border-radius:20px;padding:6px 12px;font-size:12px;font-weight:500;color:#1a2e4a;border:1px solid #ddd;pointer-events:none}
+  .notif{position:fixed;bottom:20px;right:20px;background:#1a2e4a;color:#fff;padding:10px 16px;border-radius:8px;font-size:13px;z-index:9999;opacity:0;transition:opacity .3s;pointer-events:none}
+  .notif.show{opacity:1}
+</style>
+</head>
+<body>
+
+<div id="header">
+  <i class="ti ti-map-2" style="font-size:20px" aria-hidden="true"></i>
+  <div>
+    <div id="header-h1" style="font-size:16px;font-weight:500">WA Cadastral Job Tracker</div>
+    <div class="subtitle">Landgate WA · Builders & Developers · Site Statistics</div>
+  </div>
+  <div class="spacer"></div>
+  <button onclick="openModal('add-lot-modal')"><i class="ti ti-plus" aria-hidden="true"></i> Add Job</button>
+  <button onclick="openModal('manage-modal')"><i class="ti ti-settings" aria-hidden="true"></i> Manage</button>
+</div>
+
+<div id="app">
+  <div id="sidebar">
+    <div id="sidebar-inner">
+      <!-- Tabs -->
+      <div class="tab-bar">
+        <div class="tab active" onclick="switchTab('layers')">Layers</div>
+        <div class="tab" onclick="switchTab('filter')">Filter</div>
+        <div class="tab" onclick="switchTab('stats')">Statistics</div>
+      </div>
+
+      <!-- LAYERS TAB -->
+      <div id="tab-layers" class="tab-content active">
+        <div class="section">
+          <div class="section-header open" onclick="toggleSection(this)">
+            <i class="ti ti-stack-2" style="font-size:16px;color:#1a7a5e" aria-hidden="true"></i>
+            <span class="label">Map Layers</span>
+            <i class="ti ti-chevron-down toggle" aria-hidden="true"></i>
+          </div>
+          <div class="section-body open">
+            <div class="layer-row">
+              <div class="layer-dot" style="background:#1a7a5e"></div>
+              <div style="flex:1"><div class="layer-label">Cadastral Lots (Landgate)</div><div class="layer-sub">WA Lot boundaries via WMS</div></div>
+              <label class="switch"><input type="checkbox" id="toggle-cadastral" checked onchange="toggleCadastral(this)"><span class="slider-sw"></span></label>
+            </div>
+            <div class="layer-row">
+              <div class="layer-dot" style="background:#2980b9"></div>
+              <div style="flex:1"><div class="layer-label">Completed Jobs</div><div class="layer-sub">Sites attended — all records</div></div>
+              <label class="switch"><input type="checkbox" id="toggle-completed" checked onchange="toggleMarkerLayer('completed',this)"><span class="slider-sw"></span></label>
+            </div>
+            <div class="layer-row">
+              <div class="layer-dot" style="background:#e67e22"></div>
+              <div style="flex:1"><div class="layer-label">In Progress</div><div class="layer-sub">Currently active jobs</div></div>
+              <label class="switch"><input type="checkbox" id="toggle-inprogress" checked onchange="toggleMarkerLayer('inprogress',this)"><span class="slider-sw"></span></label>
+            </div>
+            <div class="layer-row">
+              <div class="layer-dot" style="background:#c0392b"></div>
+              <div style="flex:1"><div class="layer-label">Pending</div><div class="layer-sub">Assigned, not yet started</div></div>
+              <label class="switch"><input type="checkbox" id="toggle-pending" checked onchange="toggleMarkerLayer('pending',this)"><span class="slider-sw"></span></label>
+            </div>
+            <div class="layer-row">
+              <div class="layer-dot" style="background:#6c5ce7;border:2px solid #fff;box-shadow:0 0 0 1px #6c5ce7"></div>
+              <div style="flex:1"><div class="layer-label">Suburb Boundaries</div><div class="layer-sub">WA suburb polygons</div></div>
+              <label class="switch"><input type="checkbox" id="toggle-suburbs" onchange="toggleSuburbLayer(this)"><span class="slider-sw"></span></label>
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-header open" onclick="toggleSection(this)">
+            <i class="ti ti-building-community" style="font-size:16px;color:#2980b9" aria-hidden="true"></i>
+            <span class="label">Builders</span>
+            <span class="count" id="builder-count">0</span>
+            <i class="ti ti-chevron-down toggle" aria-hidden="true"></i>
+          </div>
+          <div class="section-body open" id="builder-layer-list">
+            <div class="empty">No builders added yet</div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-header open" onclick="toggleSection(this)">
+            <i class="ti ti-home-2" style="font-size:16px;color:#1a7a5e" aria-hidden="true"></i>
+            <span class="label">Developers</span>
+            <span class="count" id="developer-count">0</span>
+            <i class="ti ti-chevron-down toggle" aria-hidden="true"></i>
+          </div>
+          <div class="section-body open" id="developer-layer-list">
+            <div class="empty">No developers added yet</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- FILTER TAB -->
+      <div id="tab-filter" class="tab-content" style="padding:12px 14px">
+        <div class="filter-group">
+          <label>Suburb</label>
+          <input type="text" id="f-suburb" placeholder="e.g. Baldivis, Ellenbrook…" oninput="applyFilters()">
+        </div>
+        <div class="filter-group">
+          <label>Address / Lot number</label>
+          <input type="text" id="f-address" placeholder="e.g. 14 Smith St or Lot 42" oninput="applyFilters()">
+        </div>
+        <div class="filter-group">
+          <label>Builder</label>
+          <select id="f-builder" onchange="applyFilters()">
+            <option value="">All builders</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Developer</label>
+          <select id="f-developer" onchange="applyFilters()">
+            <option value="">All developers</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Job status</label>
+          <select id="f-status" onchange="applyFilters()">
+            <option value="">All statuses</option>
+            <option value="completed">Completed</option>
+            <option value="inprogress">In progress</option>
+            <option value="pending">Pending</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Date range</label>
+          <div style="display:flex;gap:6px">
+            <input type="date" id="f-date-from" oninput="applyFilters()" style="flex:1;padding:6px 8px;border:1px solid #ddd;border-radius:6px;font-size:12px">
+            <input type="date" id="f-date-to" oninput="applyFilters()" style="flex:1;padding:6px 8px;border:1px solid #ddd;border-radius:6px;font-size:12px">
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn success" onclick="applyFilters()"><i class="ti ti-filter" aria-hidden="true"></i> Apply</button>
+          <button class="btn" onclick="clearFilters()"><i class="ti ti-x" aria-hidden="true"></i> Clear</button>
+        </div>
+        <div id="filter-results" style="margin-top:12px"></div>
+        <div class="lot-list" id="filter-lot-list" style="margin-top:8px"></div>
+      </div>
+
+      <!-- STATS TAB -->
+      <div id="tab-stats" class="tab-content" style="padding:12px 14px">
+        <div class="stat-grid" id="stat-grid">
+          <div class="stat-card"><div class="val" id="s-total">0</div><div class="lbl">Total jobs</div></div>
+          <div class="stat-card"><div class="val" id="s-completed">0</div><div class="lbl">Completed</div></div>
+          <div class="stat-card"><div class="val" id="s-inprogress">0</div><div class="lbl">In progress</div></div>
+          <div class="stat-card"><div class="val" id="s-suburbs">0</div><div class="lbl">Suburbs</div></div>
+        </div>
+
+        <div style="font-size:12px;font-weight:500;color:#888;text-transform:uppercase;letter-spacing:.05em;margin:10px 0 6px">Jobs by Builder</div>
+        <div id="builder-chart"></div>
+
+        <div style="font-size:12px;font-weight:500;color:#888;text-transform:uppercase;letter-spacing:.05em;margin:10px 0 6px">Jobs by Developer</div>
+        <div id="developer-chart"></div>
+
+        <div style="font-size:12px;font-weight:500;color:#888;text-transform:uppercase;letter-spacing:.05em;margin:10px 0 6px">Top suburbs</div>
+        <div id="suburb-chart"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="map-container">
+    <button id="toggle-sidebar" onclick="toggleSidebar()" title="Toggle sidebar" aria-label="Toggle sidebar">
+      <i class="ti ti-chevron-left" id="sb-icon" aria-hidden="true"></i>
+    </button>
+    <div id="map"></div>
+    <div class="map-stats-bar">
+      <div class="map-chip" id="chip-total">0 jobs</div>
+      <div class="map-chip" id="chip-filter" style="display:none;background:#1a7a5e;color:#fff">Filtered</div>
+    </div>
+    <div class="map-legend">
+      <div style="font-size:11px;font-weight:500;color:#555;margin-bottom:5px">Job status</div>
+      <div class="legend-row"><div class="legend-dot" style="background:#2980b9"></div>Completed</div>
+      <div class="legend-row"><div class="legend-dot" style="background:#e67e22"></div>In progress</div>
+      <div class="legend-row"><div class="legend-dot" style="background:#c0392b"></div>Pending</div>
+    </div>
+  </div>
+</div>
+
+<!-- ADD LOT MODAL -->
+<div class="modal-overlay" id="add-lot-modal">
+  <div class="modal">
+    <h2><i class="ti ti-map-pin" aria-hidden="true" style="margin-right:6px"></i>Add new job / lot</h2>
+    <div class="form-row">
+      <label>Address / Lot description *</label>
+      <input type="text" id="nl-address" placeholder="e.g. 14 Smith St, Baldivis">
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div class="form-row">
+        <label>Suburb *</label>
+        <input type="text" id="nl-suburb" placeholder="Suburb">
+      </div>
+      <div class="form-row">
+        <label>Lot number</label>
+        <input type="text" id="nl-lot" placeholder="e.g. 42">
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div class="form-row">
+        <label>Latitude *</label>
+        <input type="number" id="nl-lat" placeholder="-32.0" step="0.0001">
+      </div>
+      <div class="form-row">
+        <label>Longitude *</label>
+        <input type="number" id="nl-lng" placeholder="115.8" step="0.0001">
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div class="form-row">
+        <label>Builder</label>
+        <select id="nl-builder"><option value="">— none —</option></select>
+      </div>
+      <div class="form-row">
+        <label>Developer</label>
+        <select id="nl-developer"><option value="">— none —</option></select>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div class="form-row">
+        <label>Status</label>
+        <select id="nl-status">
+          <option value="completed">Completed</option>
+          <option value="inprogress">In progress</option>
+          <option value="pending">Pending</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label>Date</label>
+        <input type="date" id="nl-date">
+      </div>
+    </div>
+    <div class="form-row">
+      <label>Notes</label>
+      <textarea id="nl-notes" placeholder="Any additional notes…"></textarea>
+    </div>
+    <div class="btn-row">
+      <button class="btn success" onclick="saveLot()"><i class="ti ti-check" aria-hidden="true"></i> Save job</button>
+      <button class="btn" onclick="closeModal('add-lot-modal')">Cancel</button>
+    </div>
+    <div style="margin-top:10px;font-size:11px;color:#aaa"><i class="ti ti-info-circle" aria-hidden="true"></i> Tip: click anywhere on the map first to auto-fill coordinates</div>
+  </div>
+</div>
+
+<!-- MANAGE MODAL -->
+<div class="modal-overlay" id="manage-modal">
+  <div class="modal" style="width:500px">
+    <h2><i class="ti ti-settings" aria-hidden="true" style="margin-right:6px"></i>Manage builders & developers</h2>
+    <div class="tab-bar" style="margin:-4px -20px 16px;border-radius:0">
+      <div class="tab active" onclick="switchManageTab('builders')">Builders</div>
+      <div class="tab" onclick="switchManageTab('developers')">Developers</div>
+    </div>
+
+    <div id="manage-builders">
+      <div style="display:grid;grid-template-columns:1fr auto;gap:8px;margin-bottom:12px">
+        <input type="text" id="new-builder-name" placeholder="Builder company name…" style="padding:8px 10px;border:1px solid #ddd;border-radius:6px;font-size:13px">
+        <button class="btn success" onclick="addEntity('builder')"><i class="ti ti-plus" aria-hidden="true"></i> Add</button>
+      </div>
+      <div id="manage-builder-list"></div>
+    </div>
+
+    <div id="manage-developers" style="display:none">
+      <div style="display:grid;grid-template-columns:1fr auto;gap:8px;margin-bottom:12px">
+        <input type="text" id="new-developer-name" placeholder="Developer company name…" style="padding:8px 10px;border:1px solid #ddd;border-radius:6px;font-size:13px">
+        <button class="btn success" onclick="addEntity('developer')"><i class="ti ti-plus" aria-hidden="true"></i> Add</button>
+      </div>
+      <div id="manage-developer-list"></div>
+    </div>
+
+    <div class="btn-row" style="margin-top:16px;border-top:1px solid #eee;padding-top:12px">
+      <button class="btn primary" onclick="closeModal('manage-modal')"><i class="ti ti-check" aria-hidden="true"></i> Done</button>
+    </div>
+  </div>
+</div>
+
+<div class="notif" id="notif"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// ===================== DATA STORE =====================
+let state = {
+  lots: [],
+  builders: [],
+  developers: [],
+  layerVisibility: {completed:true,inprogress:true,pending:true},
+  filters: {},
+  editingLotId: null
+};
+
+// Load from localStorage if available
+try {
+  const saved = localStorage.getItem('wa-cadastral-tracker');
+  if (saved) state = JSON.parse(saved);
+} catch(e){}
+
+function save() {
+  try { localStorage.setItem('wa-cadastral-tracker', JSON.stringify(state)); } catch(e){}
+}
+
+// ===================== SEED DATA =====================
+if (state.builders.length === 0) {
+  state.builders = [
+    {id:'b1',name:'BGC Group',color:'#2980b9'},
+    {id:'b2',name:'Dale Alcock Homes',color:'#8e44ad'},
+    {id:'b3',name:'Ventura Home Group',color:'#16a085'},
+    {id:'b4',name:'Summit Homes',color:'#d35400'},
+  ];
+}
+if (state.developers.length === 0) {
+  state.developers = [
+    {id:'d1',name:'Stockland',color:'#1a7a5e'},
+    {id:'d2',name:'Peet Limited',color:'#c0392b'},
+    {id:'d3',name:'Satterley Property Group',color:'#2471a3'},
+    {id:'d4',name:'LWP Property Group',color:'#784212'},
+  ];
+}
+if (state.lots.length === 0) {
+  state.lots = [
+    {id:'l1',address:'14 Springvale Loop',suburb:'Baldivis',lot:'42',lat:-32.3251,lng:115.8337,builder:'b1',developer:'d1',status:'completed',date:'2024-09-12',notes:'Slab inspection completed'},
+    {id:'l2',address:'7 Rosette Loop',suburb:'Baldivis',lot:'17',lat:-32.3285,lng:115.8362,builder:'b2',developer:'d1',status:'completed',date:'2024-10-03',notes:''},
+    {id:'l3',address:'31 Chadstone Blvd',suburb:'Ellenbrook',lot:'88',lat:-31.7715,lng:115.9982,builder:'b3',developer:'d2',status:'inprogress',date:'2025-01-15',notes:'Frame stage'},
+    {id:'l4',address:'5 Amber Drive',suburb:'Ellenbrook',lot:'93',lat:-31.7698,lng:115.9940,builder:'b1',developer:'d2',status:'completed',date:'2025-02-20',notes:''},
+    {id:'l5',address:'22 Ridgewood Blvd',suburb:'Ridgewood',lot:'205',lat:-31.6882,lng:115.7420,builder:'b4',developer:'d3',status:'pending',date:'2025-03-01',notes:'Scheduled next month'},
+    {id:'l6',address:'9 Shorehaven Blvd',suburb:'Alkimos',lot:'310',lat:-31.6350,lng:115.7025,builder:'b2',developer:'d3',status:'completed',date:'2024-11-18',notes:''},
+    {id:'l7',address:'44 Midfield Way',suburb:'Brabham',lot:'67',lat:-31.7850,lng:115.9650,builder:'b3',developer:'d4',status:'completed',date:'2024-12-05',notes:''},
+    {id:'l8',address:'18 Settlers Blvd',suburb:'Brabham',lot:'72',lat:-31.7870,lng:115.9680,builder:'b1',developer:'d4',status:'inprogress',date:'2025-01-28',notes:''},
+    {id:'l9',address:'6 Vasse Blvd',suburb:'Busselton',lot:'11',lat:-33.6530,lng:115.3440,builder:'b4',developer:'d1',status:'completed',date:'2024-08-14',notes:'Remote south-west job'},
+    {id:'l10',address:'3 Northam Rd',suburb:'Northam',lot:'5',lat:-31.6572,lng:116.6686,builder:'b2',developer:'d2',status:'pending',date:'2025-04-01',notes:'Wheatbelt region'},
+  ];
+}
+save();
+
+// ===================== MAP SETUP =====================
+const map = L.map('map', {center:[-31.9505,115.8605],zoom:10,zoomControl:true});
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+  attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> | Cadastral © <a href="https://www0.landgate.wa.gov.au">Landgate WA</a>',
+  maxZoom:20
+}).addTo(map);
+
+// Landgate WMS Cadastral Layer
+const cadastralLayer = L.tileLayer.wms('https://services.slip.wa.gov.au/public/services/SLIP_Public_Services/Land/MapServer/WMSServer', {
+  layers:'7',
+  format:'image/png',
+  transparent:true,
+  version:'1.3.0',
+  attribution:'Cadastral © Landgate WA',
+  opacity:0.6
+});
+cadastralLayer.addTo(map);
+
+// Suburb boundaries (Landgate public WMS)
+const suburbLayer = L.tileLayer.wms('https://services.slip.wa.gov.au/public/services/SLIP_Public_Services/Administrative_Boundaries/MapServer/WMSServer',{
+  layers:'6',
+  format:'image/png',
+  transparent:true,
+  version:'1.3.0',
+  opacity:0.5
+});
+
+function toggleCadastral(cb){
+  if(cb.checked) map.addLayer(cadastralLayer); else map.removeLayer(cadastralLayer);
+}
+function toggleSuburbLayer(cb){
+  if(cb.checked) map.addLayer(suburbLayer); else map.removeLayer(suburbLayer);
+}
+
+// Click to set coordinates in add modal
+let pendingCoord = null;
+map.on('click', function(e){
+  pendingCoord = e.latlng;
+  const latField = document.getElementById('nl-lat');
+  const lngField = document.getElementById('nl-lng');
+  if(latField && lngField){
+    latField.value = e.latlng.lat.toFixed(6);
+    lngField.value = e.latlng.lng.toFixed(6);
+  }
+  if(document.getElementById('add-lot-modal').classList.contains('open')) return;
+  // Open modal on double-click only if modal not already open
+});
+
+// ===================== MARKERS =====================
+let markerGroups = {completed:[],inprogress:[],pending:[]};
+let allMarkers = [];
+
+const statusColors = {completed:'#2980b9',inprogress:'#e67e22',pending:'#c0392b'};
+
+function makeIcon(status, size=12){
+  const c = statusColors[status]||'#888';
+  return L.divIcon({
+    html:`<div style="width:${size}px;height:${size}px;background:${c};border-radius:50%;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35)"></div>`,
+    className:'',iconSize:[size+4,size+4],iconAnchor:[(size+4)/2,(size+4)/2]
+  });
+}
+
+function getBuilderName(id){ const b=state.builders.find(x=>x.id===id); return b?b.name:'—'; }
+function getDeveloperName(id){ const d=state.developers.find(x=>x.id===id); return d?d.name:'—'; }
+
+function renderMarkers(lots){
+  allMarkers.forEach(m=>map.removeLayer(m));
+  allMarkers=[];
+  markerGroups={completed:[],inprogress:[],pending:[]};
+  lots.forEach(lot=>{
+    const m = L.marker([lot.lat,lot.lng],{icon:makeIcon(lot.status)});
+    m.bindPopup(`
+      <div class="popup-title"><i class="ti ti-map-pin" style="font-size:13px;margin-right:4px"></i>${lot.address}</div>
+      <div class="popup-row"><strong>Suburb</strong>${lot.suburb}</div>
+      <div class="popup-row"><strong>Lot</strong>${lot.lot||'—'}</div>
+      <div class="popup-row"><strong>Builder</strong>${getBuilderName(lot.builder)}</div>
+      <div class="popup-row"><strong>Developer</strong>${getDeveloperName(lot.developer)}</div>
+      <div class="popup-row"><strong>Status</strong><span style="color:${statusColors[lot.status]};font-weight:500">${lot.status}</span></div>
+      <div class="popup-row"><strong>Date</strong>${lot.date||'—'}</div>
+      ${lot.notes?`<div class="popup-row"><strong>Notes</strong>${lot.notes}</div>`:''}
+      <button class="popup-btn" onclick="editLot('${lot.id}')">Edit job</button>
+    `);
+    if(state.layerVisibility[lot.status]) m.addTo(map);
+    markerGroups[lot.status].push(m);
+    allMarkers.push(m);
+  });
+}
+
+function toggleMarkerLayer(status, cb){
+  state.layerVisibility[status] = cb.checked;
+  markerGroups[status].forEach(m=>{
+    if(cb.checked) m.addTo(map); else map.removeLayer(m);
+  });
+  save();
+}
+
+// ===================== SIDEBAR RENDER =====================
+function renderEntityLayers(type){
+  const items = state[type+'s'];
+  const el = document.getElementById(type+'-layer-list');
+  const countEl = document.getElementById(type+'-count');
+  if(countEl) countEl.textContent = items.length;
+  if(items.length===0){ el.innerHTML='<div class="empty">No '+type+'s added yet</div>'; return; }
+  el.innerHTML = items.map(e=>{
+    const count = state.lots.filter(l=>l[type]===e.id).length;
+    return `<div class="layer-row">
+      <div class="layer-dot" style="background:${e.color}"></div>
+      <div style="flex:1"><div class="layer-label">${e.name}</div><div class="layer-sub">${count} job${count!==1?'s':''}</div></div>
+    </div>`;
+  }).join('');
+}
+
+function renderManageLists(){
+  ['builder','developer'].forEach(type=>{
+    const el = document.getElementById('manage-'+type+'-list');
+    const items = state[type+'s'];
+    if(items.length===0){ el.innerHTML='<div class="empty">None added yet</div>'; return; }
+    el.innerHTML = items.map(e=>{
+      const count = state.lots.filter(l=>l[type]===e.id).length;
+      return `<div class="entity-item">
+        <div class="entity-avatar" style="background:${e.color}22;color:${e.color}">${e.name.substring(0,2).toUpperCase()}</div>
+        <div style="flex:1;font-size:13px">${e.name} <span style="color:#aaa;font-size:11px">(${count} jobs)</span></div>
+        <button class="btn danger" style="padding:4px 8px;font-size:11px" onclick="removeEntity('${type}','${e.id}')"><i class="ti ti-trash" aria-hidden="true"></i></button>
+      </div>`;
+    }).join('');
+  });
+}
+
+function populateSelects(){
+  ['nl-builder','f-builder'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(!el)return;
+    const cur=el.value;
+    el.innerHTML='<option value="">— none —</option>'+state.builders.map(b=>`<option value="${b.id}">${b.name}</option>`).join('');
+    el.value=cur;
+  });
+  ['nl-developer','f-developer'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(!el)return;
+    const cur=el.value;
+    el.innerHTML='<option value="">— none —</option>'+state.developers.map(d=>`<option value="${d.id}">${d.name}</option>`).join('');
+    el.value=cur;
+  });
+  const fb=document.getElementById('f-builder');
+  if(fb) fb.options[0].text='All builders';
+  const fd=document.getElementById('f-developer');
+  if(fd) fd.options[0].text='All developers';
+}
+
+// ===================== ADD/EDIT LOT =====================
+function saveLot(){
+  const addr=document.getElementById('nl-address').value.trim();
+  const suburb=document.getElementById('nl-suburb').value.trim();
+  const lat=parseFloat(document.getElementById('nl-lat').value);
+  const lng=parseFloat(document.getElementById('nl-lng').value);
+  if(!addr||!suburb||isNaN(lat)||isNaN(lng)){
+    notify('Please fill in address, suburb, and coordinates'); return;
+  }
+  if(state.editingLotId){
+    const lot=state.lots.find(l=>l.id===state.editingLotId);
+    if(lot){
+      lot.address=addr; lot.suburb=suburb; lot.lot=document.getElementById('nl-lot').value;
+      lot.lat=lat; lot.lng=lng; lot.builder=document.getElementById('nl-builder').value;
+      lot.developer=document.getElementById('nl-developer').value;
+      lot.status=document.getElementById('nl-status').value;
+      lot.date=document.getElementById('nl-date').value;
+      lot.notes=document.getElementById('nl-notes').value;
+    }
+    state.editingLotId=null;
+    document.querySelector('#add-lot-modal h2').innerHTML='<i class="ti ti-map-pin" style="margin-right:6px"></i>Add new job / lot';
+  } else {
+    state.lots.push({
+      id:'l'+Date.now(),
+      address:addr, suburb:suburb, lot:document.getElementById('nl-lot').value,
+      lat,lng,
+      builder:document.getElementById('nl-builder').value,
+      developer:document.getElementById('nl-developer').value,
+      status:document.getElementById('nl-status').value,
+      date:document.getElementById('nl-date').value,
+      notes:document.getElementById('nl-notes').value
+    });
+  }
+  save();
+  closeModal('add-lot-modal');
+  fullRefresh();
+  notify('Job saved');
+}
+
+function editLot(id){
+  const lot=state.lots.find(l=>l.id===id);
+  if(!lot)return;
+  state.editingLotId=id;
+  document.getElementById('nl-address').value=lot.address;
+  document.getElementById('nl-suburb').value=lot.suburb;
+  document.getElementById('nl-lot').value=lot.lot||'';
+  document.getElementById('nl-lat').value=lot.lat;
+  document.getElementById('nl-lng').value=lot.lng;
+  populateSelects();
+  document.getElementById('nl-builder').value=lot.builder||'';
+  document.getElementById('nl-developer').value=lot.developer||'';
+  document.getElementById('nl-status').value=lot.status;
+  document.getElementById('nl-date').value=lot.date||'';
+  document.getElementById('nl-notes').value=lot.notes||'';
+  document.querySelector('#add-lot-modal h2').innerHTML='<i class="ti ti-edit" style="margin-right:6px"></i>Edit job';
+  openModal('add-lot-modal');
+}
+
+// ===================== ENTITY MANAGEMENT =====================
+const entityColors = ['#2980b9','#8e44ad','#16a085','#d35400','#c0392b','#1a7a5e','#2471a3','#784212','#117a65','#7d3c98'];
+function addEntity(type){
+  const input=document.getElementById('new-'+type+'-name');
+  const name=input.value.trim();
+  if(!name){notify('Enter a name first');return;}
+  const id=type.substring(0,1)+Date.now();
+  const color=entityColors[state[type+'s'].length%entityColors.length];
+  state[type+'s'].push({id,name,color});
+  input.value='';
+  save();
+  populateSelects();
+  renderEntityLayers(type);
+  renderManageLists();
+  notify(type.charAt(0).toUpperCase()+type.slice(1)+' added');
+}
+function removeEntity(type,id){
+  if(state.lots.some(l=>l[type]===id)){
+    notify('Cannot remove: assigned to lots'); return;
+  }
+  state[type+'s']=state[type+'s'].filter(e=>e.id!==id);
+  save();
+  populateSelects();
+  renderEntityLayers(type);
+  renderManageLists();
+}
+
+// ===================== FILTERS =====================
+function applyFilters(){
+  const suburb=(document.getElementById('f-suburb').value||'').toLowerCase().trim();
+  const address=(document.getElementById('f-address').value||'').toLowerCase().trim();
+  const builder=document.getElementById('f-builder').value;
+  const developer=document.getElementById('f-developer').value;
+  const status=document.getElementById('f-status').value;
+  const dateFrom=document.getElementById('f-date-from').value;
+  const dateTo=document.getElementById('f-date-to').value;
+
+  const active = suburb||address||builder||developer||status||dateFrom||dateTo;
+  document.getElementById('chip-filter').style.display=active?'':'none';
+
+  const filtered=state.lots.filter(l=>{
+    if(suburb && !l.suburb.toLowerCase().includes(suburb)) return false;
+    if(address && !l.address.toLowerCase().includes(address) && !(l.lot&&l.lot.toLowerCase().includes(address))) return false;
+    if(builder && l.builder!==builder) return false;
+    if(developer && l.developer!==developer) return false;
+    if(status && l.status!==status) return false;
+    if(dateFrom && l.date && l.date<dateFrom) return false;
+    if(dateTo && l.date && l.date>dateTo) return false;
+    return true;
+  });
+
+  renderMarkers(filtered);
+  updateChip(filtered.length);
+
+  const resEl=document.getElementById('filter-results');
+  resEl.innerHTML=active?`<div style="font-size:13px;color:#1a7a5e;font-weight:500">${filtered.length} lot${filtered.length!==1?'s':''} matched</div>`:'';
+
+  const listEl=document.getElementById('filter-lot-list');
+  listEl.innerHTML=filtered.slice(0,50).map(l=>`
+    <div class="lot-item" onclick="map.setView([${l.lat},${l.lng}],16)">
+      <span class="lot-badge ${l.status}">${l.status}</span>
+      <div style="flex:1">
+        <div style="font-weight:500;font-size:12px">${l.address}</div>
+        <div style="color:#aaa;font-size:11px">${l.suburb} · ${getBuilderName(l.builder)}</div>
+      </div>
+    </div>`).join('');
+}
+
+function clearFilters(){
+  ['f-suburb','f-address','f-date-from','f-date-to'].forEach(id=>{ const e=document.getElementById(id); if(e)e.value=''; });
+  ['f-builder','f-developer','f-status'].forEach(id=>{ const e=document.getElementById(id); if(e)e.value=''; });
+  document.getElementById('filter-results').innerHTML='';
+  document.getElementById('filter-lot-list').innerHTML='';
+  document.getElementById('chip-filter').style.display='none';
+  renderMarkers(state.lots);
+  updateChip(state.lots.length);
+}
+
+// ===================== STATS =====================
+function renderStats(){
+  const lots=state.lots;
+  document.getElementById('s-total').textContent=lots.length;
+  document.getElementById('s-completed').textContent=lots.filter(l=>l.status==='completed').length;
+  document.getElementById('s-inprogress').textContent=lots.filter(l=>l.status==='inprogress').length;
+  const suburbs=[...new Set(lots.map(l=>l.suburb))];
+  document.getElementById('s-suburbs').textContent=suburbs.length;
+
+  // Builder chart
+  const bc=document.getElementById('builder-chart');
+  if(state.builders.length===0){bc.innerHTML='<div class="empty">No builders</div>';return;}
+  const maxB=Math.max(...state.builders.map(b=>lots.filter(l=>l.builder===b.id).length),1);
+  bc.innerHTML=state.builders.map(b=>{
+    const count=lots.filter(l=>l.builder===b.id).length;
+    const pct=Math.round((count/maxB)*100);
+    return `<div style="margin-bottom:6px">
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:#555;margin-bottom:2px"><span>${b.name}</span><span style="font-weight:500">${count}</span></div>
+      <div style="background:#eee;border-radius:3px;height:8px"><div style="width:${pct}%;background:${b.color};height:8px;border-radius:3px;transition:width .4s"></div></div>
+    </div>`;
+  }).join('');
+
+  // Developer chart
+  const dc=document.getElementById('developer-chart');
+  if(state.developers.length===0){dc.innerHTML='<div class="empty">No developers</div>';return;}
+  const maxD=Math.max(...state.developers.map(d=>lots.filter(l=>l.developer===d.id).length),1);
+  dc.innerHTML=state.developers.map(d=>{
+    const count=lots.filter(l=>l.developer===d.id).length;
+    const pct=Math.round((count/maxD)*100);
+    return `<div style="margin-bottom:6px">
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:#555;margin-bottom:2px"><span>${d.name}</span><span style="font-weight:500">${count}</span></div>
+      <div style="background:#eee;border-radius:3px;height:8px"><div style="width:${pct}%;background:${d.color};height:8px;border-radius:3px;transition:width .4s"></div></div>
+    </div>`;
+  }).join('');
+
+  // Suburb chart
+  const sc=document.getElementById('suburb-chart');
+  const suburbCounts={};
+  lots.forEach(l=>{ suburbCounts[l.suburb]=(suburbCounts[l.suburb]||0)+1; });
+  const sorted=Object.entries(suburbCounts).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  const maxS=sorted.length>0?sorted[0][1]:1;
+  sc.innerHTML=sorted.map(([sub,cnt])=>{
+    const pct=Math.round((cnt/maxS)*100);
+    return `<div style="margin-bottom:6px">
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:#555;margin-bottom:2px"><span>${sub}</span><span style="font-weight:500">${cnt}</span></div>
+      <div style="background:#eee;border-radius:3px;height:8px"><div style="width:${pct}%;background:#1a2e4a;height:8px;border-radius:3px;transition:width .4s"></div></div>
+    </div>`;
+  }).join('');
+}
+
+// ===================== UI HELPERS =====================
+function toggleSection(header){
+  header.classList.toggle('open');
+  const body=header.nextElementSibling;
+  body.classList.toggle('open');
+}
+function switchTab(tab){
+  document.querySelectorAll('.tab-bar .tab').forEach((t,i)=>{
+    const tabs=['layers','filter','stats'];
+    t.classList.toggle('active',tabs[i]===tab);
+  });
+  document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
+  document.getElementById('tab-'+tab).classList.add('active');
+  if(tab==='stats') renderStats();
+}
+function switchManageTab(tab){
+  document.querySelectorAll('#manage-modal .tab').forEach((t,i)=>{
+    t.classList.toggle('active',i===(tab==='builders'?0:1));
+  });
+  document.getElementById('manage-builders').style.display=tab==='builders'?'':'none';
+  document.getElementById('manage-developers').style.display=tab==='developers'?'':'none';
+}
+function toggleSidebar(){
+  const sb=document.getElementById('sidebar');
+  const icon=document.getElementById('sb-icon');
+  sb.classList.toggle('collapsed');
+  icon.className=sb.classList.contains('collapsed')?'ti ti-chevron-right':'ti ti-chevron-left';
+  setTimeout(()=>map.invalidateSize(),300);
+}
+function openModal(id){
+  if(id==='add-lot-modal') populateSelects();
+  if(id==='manage-modal'){renderManageLists();}
+  document.getElementById(id).classList.add('open');
+}
+function closeModal(id){
+  document.getElementById(id).classList.remove('open');
+  if(id==='add-lot-modal'){
+    state.editingLotId=null;
+    document.querySelector('#add-lot-modal h2').innerHTML='<i class="ti ti-map-pin" style="margin-right:6px"></i>Add new job / lot';
+  }
+}
+document.querySelectorAll('.modal-overlay').forEach(overlay=>{
+  overlay.addEventListener('click',e=>{ if(e.target===overlay) closeModal(overlay.id); });
+});
+function notify(msg){
+  const n=document.getElementById('notif');
+  n.textContent=msg; n.classList.add('show');
+  setTimeout(()=>n.classList.remove('show'),2500);
+}
+function updateChip(count){
+  document.getElementById('chip-total').textContent=count+' job'+(count!==1?'s':'');
+}
+
+function fullRefresh(){
+  renderMarkers(state.lots);
+  renderEntityLayers('builder');
+  renderEntityLayers('developer');
+  populateSelects();
+  updateChip(state.lots.length);
+  renderStats();
+}
+
+// ===================== INIT =====================
+fullRefresh();
+</script>
+</body>
+</html>
