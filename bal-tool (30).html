@@ -1,0 +1,1913 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bushfire Attack Level (BAL) Assessment Tool</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.0/css/all.min.css">
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/exifr@7.1.3/dist/full.umd.js"></script>
+<style>
+:root{--bg:#0f1117;--panel:#181c24;--panel2:#1e2330;--border:#2a2f3e;
+  --accent:#e85d26;--accent2:#f0a500;--text:#e8eaf0;--muted:#7a8098;
+  --ok:#2ecc71;--err:#e74c3c;--info:#3498db;--font:'Courier New',monospace;}
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{height:100%;overflow:hidden;}
+body{font-family:var(--font);background:var(--bg);color:var(--text);display:flex;flex-direction:column;}
+/* ── TOP BAR ── */
+#topbar{background:var(--panel);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;height:46px;flex-shrink:0;overflow-x:auto;}
+.logo{padding:0 12px;font-size:12px;font-weight:bold;letter-spacing:2px;
+  color:var(--accent);border-right:1px solid var(--border);height:100%;
+  display:flex;align-items:center;white-space:nowrap;}
+.logo em{color:var(--muted);font-style:normal;font-weight:normal;}
+#sw{display:flex;align-items:center;gap:6px;padding:0 10px;
+  border-right:1px solid var(--border);flex:1;max-width:340px;min-width:160px;}
+#sw i{color:var(--muted);font-size:11px;}
+#addr{background:none;border:none;color:var(--text);font-family:var(--font);
+  font-size:11px;width:100%;outline:none;}
+#addr::placeholder{color:var(--muted);}
+#gobtn{background:var(--accent);border:none;color:#fff;padding:3px 8px;
+  font-size:10px;cursor:pointer;font-family:var(--font);letter-spacing:1px;border-radius:2px;}
+.tg{display:flex;align-items:center;border-right:1px solid var(--border);height:100%;}
+.tb{background:none;border:none;color:var(--muted);padding:0 8px;height:100%;
+  cursor:pointer;font-size:10px;display:flex;align-items:center;gap:3px;
+  font-family:var(--font);white-space:nowrap;transition:color .15s,background .15s;}
+.tb:hover{color:var(--text);background:var(--panel2);}
+.tb.on{color:var(--accent);background:rgba(232,93,38,.12);}
+.tb i{font-size:11px;}
+#crd{margin-left:auto;padding:0 10px;font-size:10px;color:var(--muted);white-space:nowrap;}
+/* ── MAIN ── */
+#main{display:flex;flex:1;overflow:hidden;min-height:0;}
+/* ── SIDEBAR ── */
+#sb{width:264px;background:var(--panel);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;overflow:hidden;flex-shrink:0;}
+.ss{border-bottom:1px solid var(--border);padding:8px 10px;}
+.ss h3{font-size:9px;letter-spacing:2px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;}
+.lr{display:flex;align-items:center;gap:5px;padding:2px 0;}
+.lr input[type=checkbox]{accent-color:var(--accent);cursor:pointer;}
+.lr label{font-size:11px;cursor:pointer;flex:1;}
+.lr input[type=range]{flex:1;accent-color:var(--accent);cursor:pointer;}
+.lv{font-size:10px;color:var(--muted);min-width:26px;text-align:right;}
+/* plots list */
+#pl{flex:1;overflow-y:auto;padding:8px 10px;}
+.pi{background:var(--panel2);border:1px solid var(--border);border-radius:2px;
+  padding:6px 8px;margin-bottom:5px;cursor:pointer;transition:border-color .15s;}
+.pi:hover{border-color:var(--muted);}
+.pi.sel{border-color:var(--accent);}
+.ph{display:flex;align-items:center;gap:5px;margin-bottom:2px;}
+.psw{width:9px;height:9px;border-radius:2px;flex-shrink:0;}
+.pn{font-size:11px;font-weight:bold;flex:1;}
+.pd{font-size:10px;color:var(--accent2);}
+.pc{font-size:10px;color:var(--muted);}
+.pb-row{display:flex;gap:3px;margin-top:4px;flex-wrap:wrap;}
+.pb{background:none;border:1px solid var(--border);color:var(--muted);
+  font-size:10px;padding:2px 5px;cursor:pointer;font-family:var(--font);
+  border-radius:2px;transition:all .15s;}
+.pb:hover{border-color:var(--muted);color:var(--text);}
+.pb.dl:hover{border-color:var(--err);color:var(--err);}
+.pb.ed:hover{border-color:var(--accent2);color:var(--accent2);}
+/* photos panel */
+#pp{border-top:1px solid var(--border);padding:7px 10px;max-height:130px;overflow-y:auto;}
+#pp h3{font-size:9px;letter-spacing:2px;color:var(--muted);margin-bottom:5px;text-transform:uppercase;}
+#pdz{border:1px dashed var(--border);border-radius:2px;padding:8px;text-align:center;
+  font-size:10px;color:var(--muted);cursor:pointer;margin-bottom:5px;transition:all .15s;}
+#pdz.ov{border-color:var(--accent);color:var(--accent);}
+#phl{display:flex;flex-wrap:wrap;gap:3px;}
+.pth{width:38px;height:38px;object-fit:cover;border-radius:2px;
+  border:1px solid var(--border);cursor:pointer;}
+.pth:hover{border-color:var(--accent);}
+/* ── MAP ── */
+#map{flex:1;min-width:0;}
+.leaflet-container{background:#1a1e2a;height:100%;}
+/* ── LEGEND ── */
+#leg{position:absolute;bottom:28px;right:8px;z-index:900;
+  background:rgba(15,17,23,.93);border:1px solid var(--border);
+  padding:7px 11px;font-size:10px;backdrop-filter:blur(4px);max-height:90vh;overflow-y:auto;}
+#leg h4{color:var(--muted);letter-spacing:1.5px;margin-bottom:5px;font-size:9px;}
+.lr2{display:flex;align-items:center;gap:5px;margin-bottom:2px;}
+.ls{width:18px;height:2px;display:inline-block;}
+/* ── STATUS ── */
+#stbar{background:var(--panel);border-top:1px solid var(--border);
+  padding:2px 12px;font-size:10px;color:var(--muted);
+  display:flex;gap:16px;align-items:center;flex-shrink:0;}
+#stbar span{color:var(--text);}
+/* ── NOTIFICATION ── */
+#notif{position:fixed;top:54px;left:50%;transform:translateX(-50%);
+  background:var(--panel2);border:1px solid var(--border);padding:5px 13px;
+  font-size:11px;z-index:9998;pointer-events:none;opacity:0;transition:opacity .25s;white-space:nowrap;}
+#notif.show{opacity:1;}
+#notif.ok{border-color:var(--ok);color:var(--ok);}
+#notif.err{border-color:var(--err);color:var(--err);}
+#notif.inf{border-color:var(--info);color:var(--info);}
+/* ── MODALS ── */
+.mo{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:9999;
+  display:none;align-items:center;justify-content:center;}
+.mo.vis{display:flex;}
+.mb{background:var(--panel);border:1px solid var(--border);padding:16px;
+  min-width:290px;max-width:450px;font-family:var(--font);max-height:90vh;overflow-y:auto;}
+.mb h3{font-size:11px;letter-spacing:2px;margin-bottom:11px;color:var(--accent);}
+.mb label{font-size:11px;color:var(--muted);display:block;margin-bottom:3px;}
+.mb input,.mb select,.mb textarea{width:100%;background:var(--panel2);
+  border:1px solid var(--border);color:var(--text);padding:5px 8px;
+  font-family:var(--font);font-size:11px;margin-bottom:8px;outline:none;resize:vertical;}
+.mb input:focus,.mb select:focus{border-color:var(--accent);}
+.ma{display:flex;gap:7px;justify-content:flex-end;margin-top:3px;}
+.bp{background:var(--accent);border:none;color:#fff;padding:6px 12px;
+  font-family:var(--font);font-size:11px;cursor:pointer;letter-spacing:1px;}
+.bs{background:none;border:1px solid var(--border);color:var(--muted);
+  padding:6px 12px;font-family:var(--font);font-size:11px;cursor:pointer;}
+.bs:hover{border-color:var(--muted);color:var(--text);}
+.cr{display:flex;gap:4px;margin-bottom:8px;flex-wrap:wrap;}
+.co{width:19px;height:19px;border-radius:2px;cursor:pointer;border:2px solid transparent;}
+.co.sel{border-color:#fff;}
+/* plan ctrl */
+#plnctrl{display:none;background:var(--panel2);border:1px solid var(--border);padding:7px 8px;margin-top:5px;}
+#plnctrl.vis{display:block;}
+/* BAL classify panel */
+#balp{display:none;position:fixed;top:54px;right:8px;z-index:2000;
+  background:var(--panel);border:1px solid var(--border);padding:12px;
+  min-width:290px;max-height:80vh;overflow-y:auto;font-family:var(--font);}
+#balp.vis{display:block;}
+#balp h3{font-size:11px;letter-spacing:2px;color:var(--accent);margin-bottom:9px;}
+.bpr{border:1px solid var(--border);padding:7px 8px;margin-bottom:6px;border-radius:2px;}
+.bpr h4{font-size:11px;margin-bottom:4px;}
+.bpr label{font-size:10px;color:var(--muted);display:block;margin-bottom:2px;}
+.bpr select,.bpr input{width:100%;background:var(--panel2);border:1px solid var(--border);
+  color:var(--text);padding:3px 6px;font-family:var(--font);font-size:11px;margin-bottom:4px;outline:none;}
+/* save/load modal */
+#iom{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;
+  display:none;align-items:center;justify-content:center;}
+#iom.vis{display:flex;}
+#iob{background:var(--panel);border:1px solid var(--border);padding:16px;
+  width:480px;max-width:95vw;font-family:var(--font);}
+#iob h3{font-size:11px;letter-spacing:2px;color:var(--accent);margin-bottom:11px;}
+#iotxt{width:100%;height:180px;background:var(--panel2);border:1px solid var(--border);
+  color:var(--text);padding:7px;font-family:var(--font);font-size:10px;outline:none;resize:vertical;}
+/* leaflet overrides */
+.leaflet-bar a{background:var(--panel2)!important;color:var(--text)!important;border-color:var(--border)!important;}
+.leaflet-bar a:hover{background:var(--panel)!important;}
+.leaflet-popup-content-wrapper{background:var(--panel);color:var(--text);
+  border:1px solid var(--border);border-radius:2px;font-family:var(--font);font-size:11px;}
+.leaflet-popup-tip{background:var(--panel);}
+.snap-ring{cursor:pointer!important;}
+.bfp-layer{filter:hue-rotate(290deg) saturate(3) brightness(1.05);}
+/* Topo overlay — multiply blends contour lines through satellite/street */
+.topo-overlay{mix-blend-mode:multiply;}
+/* Snap markers */
+.snap-pt { cursor:crosshair!important; }
+.snap-close-pt { cursor:pointer!important; }
+@keyframes snap-pulse {
+  0%   { transform:scale(1);   opacity:1; }
+  50%  { transform:scale(1.7); opacity:0.4; }
+  100% { transform:scale(1);   opacity:1; }
+}
+.snap-pulse-ring {
+  position:absolute;
+  border-radius:50%;
+  animation:snap-pulse 0.9s ease-in-out infinite;
+  pointer-events:none;
+}
+.snap-tip.leaflet-tooltip {
+  background:rgba(0,255,136,.15);
+  border:1px solid #00ff88;
+  color:#00ff88;
+  font-family:var(--font);
+  font-size:10px;
+  padding:2px 7px;
+  border-radius:2px;
+  white-space:nowrap;
+}
+.drawing .leaflet-container{cursor:crosshair!important;}
+::-webkit-scrollbar{width:4px;}
+::-webkit-scrollbar-track{background:var(--panel);}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+.phpu img{max-width:200px;border-radius:2px;display:block;margin-bottom:4px;}
+.phpu p{font-size:10px;color:var(--muted);margin-bottom:2px;}
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div id="topbar">
+  <div class="logo">BAL<em>·ASSESS</em></div>
+  <div id="sw">
+    <i class="fa fa-search"></i>
+    <input id="addr" type="text" placeholder="Search address  or  lat, lng…" autocomplete="off"/>
+    <button id="gobtn">GO</button>
+  </div>
+  <div class="tg">
+    <button class="tb" id="tb-bld"><i class="fa fa-draw-polygon"></i> BUILDING</button>
+    <button class="tb" id="tb-plt"><i class="fa fa-vector-square"></i> PLOT</button>
+    <button class="tb" id="tb-pln"><i class="fa fa-image"></i> PLAN</button>
+    <button class="tb" id="tb-top"><i class="fa fa-mountain"></i> TOPO</button>
+    <button class="tb" id="tb-msr"><i class="fa fa-ruler"></i> MEASURE</button>
+    <button class="tb" id="tb-cls"><i class="fa fa-fire"></i> CLASSIFY</button>
+    <button class="tb" id="tb-rpt"><i class="fa fa-file-word"></i> REPORT</button>
+    <button class="tb" id="tb-sav"><i class="fa fa-save"></i> SAVE/LOAD</button>
+    <button class="tb" id="tb-clr" style="color:#c0392b"><i class="fa fa-trash"></i> CLEAR</button>
+  </div>
+  <div id="crd">—</div>
+</div>
+
+<!-- MAIN -->
+<div id="main">
+  <!-- SIDEBAR -->
+  <div id="sb">
+    <div class="ss">
+      <h3>Map Layers</h3>
+      <div class="lr"><input type="checkbox" id="l-str" checked><label for="l-str">Street map</label></div>
+      <div class="lr"><input type="checkbox" id="l-sat"><label for="l-sat">Satellite imagery</label></div>
+      <div class="lr"><input type="checkbox" id="l-top"><label for="l-top">Topographic contours</label></div>
+      <div class="lr"><input type="checkbox" id="l-buf" checked><label for="l-buf">BAL buffer offsets</label></div>
+      <div class="lr"><input type="checkbox" id="l-bfp"><label for="l-bfp">WA Bushfire Prone Areas</label></div>
+      <div class="lr" id="bfp-op-row" style="display:none">
+        <label style="font-size:10px;color:var(--muted)">BFP opacity</label>
+        <input type="range" id="bfp-op" min="0" max="100" value="50">
+        <span class="lv" id="bfp-ov">50%</span>
+      </div>
+    </div>
+    <!-- BUFFER DISTANCES -->
+    <div class="ss">
+      <h3>Buffer Distances</h3>
+      <div class="lr">
+        <label style="font-size:10px;color:var(--muted);min-width:60px">Inner (m)</label>
+        <input type="number" id="buf-d1" value="100" min="1" max="9999"
+          style="width:60px;background:var(--panel2);border:1px solid var(--border);color:var(--text);padding:2px 5px;font-family:var(--font);font-size:11px;outline:none;text-align:right">
+        <button class="pb" id="btn-rebuf" style="margin-left:4px">APPLY</button>
+      </div>
+      <div class="lr" style="margin-top:3px">
+        <label style="font-size:10px;color:var(--muted);min-width:60px">Outer (m)</label>
+        <input type="number" id="buf-d2" value="150" min="1" max="9999"
+          style="width:60px;background:var(--panel2);border:1px solid var(--border);color:var(--text);padding:2px 5px;font-family:var(--font);font-size:11px;outline:none;text-align:right">
+      </div>
+      <div style="border-top:1px solid var(--border);margin:7px 0 5px"></div>
+      <div style="font-size:9px;letter-spacing:1.5px;color:var(--muted);margin-bottom:5px;text-transform:uppercase">Corner Trim Tolerance</div>
+      <div class="lr">
+        <input type="range" id="buf-tol" min="1" max="99" value="50" step="1"
+          style="flex:1;accent-color:var(--accent2)">
+        <span class="lv" id="buf-tol-val" style="min-width:36px;text-align:right;color:var(--accent2)">50%</span>
+      </div>
+      <div style="font-size:9px;color:var(--muted);margin-top:3px;line-height:1.5">
+        Controls how aggressively inner corner<br>overlaps are trimmed. Lower = keep more<br>of the buffer shape. Higher = trim more.
+      </div>
+    </div>
+    <!-- BUILDING CARD -->
+    <div class="ss" id="bld-card" style="display:none">
+      <h3>Building Envelope</h3>
+      <div id="bld-stats" style="font-size:10px;color:var(--muted);line-height:1.8"></div>
+      <div class="pb-row" style="margin-top:5px">
+        <button class="pb" id="btn-zoom-bld">ZOOM</button>
+        <button class="pb ed" id="btn-edit-bld">EDIT SHAPE</button>
+        <button class="pb dl" id="btn-del-bld">DELETE</button>
+      </div>
+    </div>
+    <div class="ss">
+      <h3>Site Plan Overlay</h3>
+      <div class="lr"><input type="checkbox" id="l-pln"><label for="l-pln">Show plan image</label></div>
+      <div class="lr">
+        <label style="font-size:10px;color:var(--muted)">Opacity</label>
+        <input type="range" id="pln-op" min="0" max="100" value="70">
+        <span class="lv" id="pln-ov">70%</span>
+      </div>
+      <div id="plnctrl">
+        <div style="font-size:10px;color:var(--muted);margin-bottom:5px">
+          Georef: <span id="rpc" style="color:var(--accent)">0</span>/3 points set
+        </div>
+        <div style="display:flex;gap:3px;flex-wrap:wrap">
+          <button class="pb" id="btn-refpt">+ REF PT</button>
+          <button class="pb" id="btn-refapply">APPLY</button>
+          <button class="pb dl" id="btn-refclr">RESET</button>
+        </div>
+      </div>
+      <button class="pb" id="btn-uplpln" style="margin-top:7px;width:100%;text-align:center">
+        <i class="fa fa-upload"></i> UPLOAD PLAN
+      </button>
+      <input type="file" id="pln-file" accept="image/*" style="display:none">
+    </div>
+    <div class="ss" style="display:flex;align-items:center;justify-content:space-between;padding-bottom:6px">
+      <h3 style="margin:0">Plots</h3>
+      <span id="plt-count" style="font-size:10px;color:var(--muted)">0 plots</span>
+    </div>
+    <div id="pl"><div style="font-size:10px;color:var(--muted);padding:4px 0">No plots yet. Use PLOT tool.</div></div>
+    <div id="pp">
+      <h3>Field Photos</h3>
+      <div id="pdz"><i class="fa fa-camera" style="display:block;font-size:14px;margin-bottom:3px"></i>Drop photos or click to upload</div>
+      <input type="file" id="ph-file" accept="image/*" multiple style="display:none">
+      <div id="phl"></div>
+    </div>
+  </div>
+
+  <!-- MAP -->
+  <div id="map"></div>
+</div>
+
+<!-- STATUS BAR -->
+<div id="stbar">
+  <div>BUILDING <span id="st-bld">—</span></div>
+  <div>PLOTS <span id="st-plt">0</span></div>
+  <div>PHOTOS <span id="st-ph">0</span></div>
+  <div>MODE <span id="st-mode">NAVIGATE</span></div>
+  <div style="margin-left:auto">ZOOM <span id="st-zoom">—</span></div>
+</div>
+
+<!-- LEGEND -->
+<div id="leg">
+  <h4>BAL BUFFERS</h4>
+  <div class="lr2"><span class="ls" style="background:#ff6b35;height:3px"></span>Building envelope</div>
+  <div class="lr2"><span class="ls" style="border-top:2px dashed #ffc800"></span><span id="leg-buf1">50m buffer</span></div>
+  <div class="lr2"><span class="ls" style="border-top:2px dashed #ff5050"></span><span id="leg-buf2">100m buffer</span></div>
+  <div style="border-top:1px solid var(--border);margin:5px 0"></div>
+  <h4>BAL RATING</h4>
+  <div class="lr2"><span class="ls" style="background:#1E8449;height:8px;border-radius:1px"></span>BAL-LOW (Very Low)</div>
+  <div class="lr2"><span class="ls" style="background:#27AE60;height:8px;border-radius:1px"></span>BAL-12.5 (Low)</div>
+  <div class="lr2"><span class="ls" style="background:#CCAA00;height:8px;border-radius:1px"></span>BAL-19 (Moderate)</div>
+  <div class="lr2"><span class="ls" style="background:#F39C12;height:8px;border-radius:1px"></span>BAL-29 (High)</div>
+  <div class="lr2"><span class="ls" style="background:#E67E22;height:8px;border-radius:1px"></span>BAL-40 (Very High)</div>
+  <div class="lr2"><span class="ls" style="background:#C0392B;height:8px;border-radius:1px"></span>BAL-FZ (Flame Zone)</div>
+  <div style="border-top:1px solid var(--border);margin:5px 0"></div>
+  <div class="lr2"><span class="ls" style="background:rgba(255,120,200,.5);height:8px;border-radius:1px;border:1px solid pink"></span>WA BFP Area</div>
+</div>
+
+<!-- NOTIFICATION -->
+<div id="notif"></div>
+
+<!-- PLOT MODAL -->
+<div class="mo" id="pm">
+  <div class="mb">
+    <h3>PLOT DETAILS</h3>
+    <label>Plot name</label>
+    <input id="pm-name" type="text" placeholder="e.g. Plot A">
+    <label>Vegetation category</label>
+    <select id="pm-vegcat">
+      <option value="">— select category —</option>
+      <option>Forest</option><option>Woodland</option><option>Shrubland</option>
+      <option>Scrub</option><option>Rainforest</option><option>Mallee/Mulga</option>
+      <option>Grassland</option><option>Other</option>
+    </select>
+    <label>Vegetation sub-type</label>
+    <select id="pm-vegsub"><option value="">— select category first —</option></select>
+    <label>Slope estimate</label>
+    <select id="pm-slope">
+      <option>Flat (0–5°)</option><option>Gentle (5–10°)</option>
+      <option>Moderate (10–18°)</option><option>Steep (18–26°)</option>
+      <option>Very Steep (&gt;26°)</option>
+    </select>
+    <label>Plot colour</label>
+    <div class="cr" id="pm-cols">
+      <div class="co sel" data-c="#27ae60" style="background:#27ae60"></div>
+      <div class="co" data-c="#f39c12" style="background:#f39c12"></div>
+      <div class="co" data-c="#e74c3c" style="background:#e74c3c"></div>
+      <div class="co" data-c="#3498db" style="background:#3498db"></div>
+      <div class="co" data-c="#9b59b6" style="background:#9b59b6"></div>
+      <div class="co" data-c="#1abc9c" style="background:#1abc9c"></div>
+      <div class="co" data-c="#e67e22" style="background:#e67e22"></div>
+      <div class="co" data-c="#ecf0f1" style="background:#ecf0f1"></div>
+    </div>
+    <label>Notes</label>
+    <input id="pm-notes" type="text" placeholder="Optional notes…">
+    <div class="ma">
+      <button class="bs" id="pm-cancel">CANCEL</button>
+      <button class="bp" id="pm-save">SAVE PLOT</button>
+    </div>
+  </div>
+</div>
+
+<!-- BAL CLASSIFY PANEL -->
+<div id="balp">
+  <h3>BAL CLASSIFICATION</h3>
+  <div id="balp-plots"></div>
+  <div style="display:flex;gap:7px;margin-top:9px">
+    <button class="bp" id="balp-apply">APPLY</button>
+    <button class="bs" id="balp-close">CLOSE</button>
+  </div>
+</div>
+
+<!-- SAVE/LOAD MODAL -->
+<div id="iom">
+  <div id="iob">
+    <h3>SAVE / LOAD PROJECT</h3>
+    <div style="display:flex;gap:5px;margin-bottom:9px">
+      <button class="bp" id="io-exp">EXPORT</button>
+      <button class="bs" id="io-imp">IMPORT</button>
+      <button class="bs" id="io-cpy">COPY</button>
+    </div>
+    <textarea id="iotxt" placeholder="Export appears here. Paste a saved string to import…"></textarea>
+    <p style="font-size:10px;color:var(--muted);margin:6px 0">Building vertices, plots and photo positions saved. Image files not included.</p>
+    <div class="ma"><button class="bs" id="io-cls">CLOSE</button></div>
+  </div>
+</div>
+
+<!-- EDIT MODE TOOLBAR — floats above map while editing a shape -->
+<div id="edit-bar" style="display:none;position:fixed;bottom:44px;left:50%;
+  transform:translateX(-50%);z-index:3000;background:var(--panel);
+  border:1px solid var(--accent2);padding:8px 16px;align-items:center;
+  gap:12px;font-family:var(--font);font-size:11px;color:var(--accent2);
+  box-shadow:0 2px 16px rgba(0,0,0,.6);">
+  <i class="fa fa-pen-to-square"></i>
+  <span id="edit-bar-label">Editing shape</span>
+  <button id="edit-done" style="background:var(--accent2);border:none;color:#000;
+    padding:5px 14px;font-family:var(--font);font-size:11px;cursor:pointer;
+    letter-spacing:1px;font-weight:bold;border-radius:2px;">✓ DONE</button>
+  <button id="edit-cancel" style="background:none;border:1px solid var(--border);
+    color:var(--muted);padding:5px 11px;font-family:var(--font);font-size:11px;
+    cursor:pointer;border-radius:2px;">✕ CANCEL</button>
+</div>
+
+<script>
+// ================================================================
+// VEGETATION SUBTYPES
+// ================================================================
+const VEG_SUBS = {
+  'Forest':      ['Tall open forest (>30m)','Open forest (10–30m)','Closed forest'],
+  'Woodland':    ['Tall open woodland (>30m)','Medium open woodland (10–30m)','Low open woodland (<10m)'],
+  'Shrubland':   ['Open shrubland','Tall shrubland (>2m)','Low shrubland (<2m)'],
+  'Scrub':       ['Tall scrub (>2m)','Open scrub','Closed scrub'],
+  'Rainforest':  ['Closed rainforest','Open rainforest'],
+  'Mallee/Mulga':['Open mallee/mulga','Closed mallee/mulga'],
+  'Grassland':   ['Unmanaged grassland','Tussock grassland','Hummock grassland'],
+  'Other':       ['Other vegetation'],
+};
+
+// ================================================================
+// BAL INFO
+// ================================================================
+const BAL_INFO = {
+  'BAL-LOW': {label:'Very Low',  color:'#1E8449', desc:'Insignificant risk. No special construction required.'},
+  'BAL-12.5':{label:'Low',       color:'#27AE60', desc:'Primarily ember attack. Radiant heat ≤12.5 kW/m².'},
+  'BAL-19':  {label:'Moderate',  color:'#CCAA00', desc:'Ember attack and low-level radiant heat (12.5–19 kW/m²).'},
+  'BAL-29':  {label:'High',      color:'#F39C12', desc:'Significant ember attack and radiant heat (19–29 kW/m²).'},
+  'BAL-40':  {label:'Very High', color:'#E67E22', desc:'High radiant heat (29–40 kW/m²), potential flame contact.'},
+  'BAL-FZ':  {label:'Flame Zone',color:'#C0392B', desc:'Extreme risk. Direct flame exposure, radiant heat >40 kW/m².'},
+};
+
+// ================================================================
+// APP STATE
+// ================================================================
+const S = {
+  mode: 'navigate',
+  buildingLayer: null,
+  buf50: null, buf100: null,
+  drawPts: [],   // building draw
+  plotPts: [],   // plot draw
+  msrPts: [],    // measure
+  plots: [],
+  photos: [],
+  planOverlay: null,
+  planImgData: null,
+  refPts: [],
+  selColor: '#27ae60',
+  lastAddr: '',
+  editingPlotId: null,
+  editingBuilding: false,
+  vertHandles: [],
+};
+
+// ================================================================
+// MAP INIT  (Leaflet)
+// ================================================================
+const map = L.map('map', {center:[-31.95,115.86], zoom:14, zoomControl:true});
+
+const lStr = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+  {attribution:'© OpenStreetMap contributors', maxZoom:19}).addTo(map);
+
+const lSat = L.tileLayer(
+  'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+  {attribution:'© Esri', maxZoom:19});
+
+// Topo: OpenTopoMap as transparent overlay (not a basemap replacement)
+// We load it on top of street/satellite so contours overlay other layers
+const lTop = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
+  {subdomains:['a','b','c'], attribution:'© OpenTopoMap (CC-BY-SA)',
+   maxZoom:17, opacity:0.55, className:'topo-overlay'});
+
+// WA BFP - SLIP WMS
+// WA Bushfire Prone Areas — three-tier fallback cascade
+// Primary: 2025 dataset on public-services host (OBRM-024, layer 22)
+const lBFP = L.tileLayer.wms(
+  'https://public-services.slip.wa.gov.au/public/services/SLIP_Public_Services/Bush_Fire_Prone_Areas/MapServer/WMSServer',
+  {layers:'22', format:'image/png', transparent:true, version:'1.1.1',
+   attribution:'© Landgate / DFES SLIP WA 2025', opacity:0.5, className:'bfp-layer'});
+// Fallback 1: older Landgate_Public_Maps WMS (confirmed live)
+const lBFP2 = L.tileLayer.wms(
+  'https://services.slip.wa.gov.au/public/services/Landgate_Public_Maps/Map_of_Bush_Fire_Prone_Areas_3/MapServer/WMSServer',
+  {layers:'8', format:'image/png', transparent:true, version:'1.1.1',
+   attribution:'© Landgate SLIP WA', opacity:0.5, className:'bfp-layer'});
+// Fallback 2: ArcGIS REST tile service — works cross-origin from file://
+const lBFP3 = L.tileLayer(
+  'https://services.slip.wa.gov.au/public/services/Landgate_Public_Maps/Map_of_Bush_Fire_Prone_Areas_3/MapServer/tile/{z}/{y}/{x}',
+  {attribution:'© Landgate SLIP WA', opacity:0.5, className:'bfp-layer', maxZoom:19});
+let _bfpActive = null;
+
+// Layer groups — all persistent
+const gBld = L.layerGroup().addTo(map);
+const gBuf = L.layerGroup().addTo(map);
+const gPlt = L.layerGroup().addTo(map);
+const gPh  = L.layerGroup().addTo(map);
+const gDrw = L.layerGroup().addTo(map);
+const gMsr = L.layerGroup().addTo(map);
+const gPln = L.layerGroup().addTo(map);
+const gSnp = L.layerGroup().addTo(map);
+const gEdt = L.layerGroup().addTo(map);
+const gDist = L.layerGroup().addTo(map);
+
+// ================================================================
+// UTILS
+// ================================================================
+function notify(msg, type='inf'){
+  const el = document.getElementById('notif');
+  el.textContent = msg; el.className = 'show '+type;
+  clearTimeout(el._t); el._t = setTimeout(()=>el.classList.remove('show'),3500);
+}
+
+function setMode(m){
+  S.mode = m;
+  document.getElementById('st-mode').textContent = m.toUpperCase().replace(/-/g,' ');
+  document.querySelectorAll('.tb').forEach(b=>b.classList.remove('on'));
+  const mapEl = document.getElementById('map');
+  if(m==='navigate') mapEl.classList.remove('drawing');
+  else {
+    mapEl.classList.add('drawing');
+    if(m==='draw-building') document.getElementById('tb-bld').classList.add('on');
+    if(m==='draw-plot')     document.getElementById('tb-plt').classList.add('on');
+    if(m==='measure')       document.getElementById('tb-msr').classList.add('on');
+    if(m==='add-ref-pt')    document.getElementById('tb-pln').classList.add('on');
+  }
+}
+
+function balColor(cls){ return (BAL_INFO[cls]||{}).color||'#7a8098'; }
+
+function haversine(a,b){
+  const R=6371000, dL=(b.lat-a.lat)*Math.PI/180, dN=(b.lng-a.lng)*Math.PI/180;
+  const x=Math.sin(dL/2)**2+Math.cos(a.lat*Math.PI/180)*Math.cos(b.lat*Math.PI/180)*Math.sin(dN/2)**2;
+  return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
+}
+
+// ================================================================
+// OFFSET POLYGON — outward expansion with rounded convex corners
+// and offset-line intersection at concave corners (no crossovers).
+// Always normalises to CCW winding so outward = left-perpendicular,
+// regardless of how the polygon was drawn or returned by Leaflet.
+// ================================================================
+function offsetPolygon(latlngs, distM){
+  const pts = latlngs.map(p=>({lat:p.lat,lng:p.lng}));
+  const n   = pts.length;
+  const mLat    = 111320;
+  const refLat  = pts.reduce((s,p)=>s+p.lat,0)/n;
+  const refLng  = pts.reduce((s,p)=>s+p.lng,0)/n;
+  const mLngVal = 111320*Math.cos(refLat*Math.PI/180);
+
+  let mx = pts.map(p=>[
+    (p.lng-refLng)*mLngVal,
+    (p.lat-refLat)*mLat
+  ]);
+
+  // Shoelace signed area — in Leaflet lat/lng (x=lng east, y=lat north),
+  // a polygon drawn CW on screen has NEGATIVE area.
+  // Normalise so area is always negative (CW-on-screen = our standard),
+  // then use RIGHT-perpendicular as outward normal.
+  let area=0;
+  for(let i=0;i<n;i++){const a=mx[i],b=mx[(i+1)%n];area+=a[0]*b[1]-b[0]*a[1];}
+
+  // Ensure CW winding (negative area) — reverse if CCW
+  if(area > 0) mx = mx.slice().reverse();
+
+  // Left-perpendicular of edge a→b = outward normal for CW polygon in screen coords
+  function edgeNorm(a,b){
+    const dx=b[0]-a[0],dy=b[1]-a[1],l=Math.sqrt(dx*dx+dy*dy)||1;
+    return [-dy/l,dx/l];
+  }
+
+  // Cross product z of (prev→curr)×(curr→next)
+  // For CW polygon: negative cross = convex (right turn outward), positive = concave
+  function cross2d(a,b,c){
+    return (b[0]-a[0])*(c[1]-b[1])-(b[1]-a[1])*(c[0]-b[0]);
+  }
+
+  // Intersection of two infinite lines: p1+t*d1 = p2+s*d2
+  function lineIsect(p1,d1,p2,d2){
+    const den=d1[0]*d2[1]-d1[1]*d2[0];
+    if(Math.abs(den)<1e-10) return null;
+    const t=((p2[0]-p1[0])*d2[1]-(p2[1]-p1[1])*d2[0])/den;
+    return [p1[0]+t*d1[0],p1[1]+t*d1[1]];
+  }
+
+  const result=[];
+
+  for(let i=0;i<n;i++){
+    const prev=mx[(i-1+n)%n],curr=mx[i],next=mx[(i+1)%n];
+    const nIn =edgeNorm(prev,curr);
+    const nOut=edgeNorm(curr,next);
+    const pIn =[curr[0]+nIn[0]*distM, curr[1]+nIn[1]*distM];
+    const pOut=[curr[0]+nOut[0]*distM,curr[1]+nOut[1]*distM];
+    const c=cross2d(prev,curr,next);
+    // CCW polygon (after normalisation): positive cross = convex (left/outward turn)
+    const isConvex = c >= 0;
+
+    if(isConvex){
+      // Convex corner — sweep outward arc (CW direction for CW polygon)
+      const r=distM;
+      const aStart=Math.atan2(nIn[1],nIn[0]);
+      const aEnd  =Math.atan2(nOut[1],nOut[0]);
+      // CW sweep: force negative (decreasing) angle — outward arc for CCW polygon
+      let sweep=aEnd-aStart;
+      while(sweep>0) sweep-=2*Math.PI;
+      if(sweep < -Math.PI*1.999) sweep=-Math.PI*1.999;
+      const steps=Math.max(2,Math.ceil(Math.abs(sweep)/(Math.PI/12)));
+      for(let s=0;s<=steps;s++){
+        const a=aStart+sweep*(s/steps);
+        result.push([curr[0]+Math.cos(a)*r,curr[1]+Math.sin(a)*r]);
+      }
+    } else {
+      // Concave corner — intersect the two offset lines for a clean join
+      const dIn =[curr[0]-prev[0],curr[1]-prev[1]];
+      const dOut=[next[0]-curr[0],next[1]-curr[1]];
+      const ix=lineIsect(pIn,dIn,pOut,dOut);
+      result.push(ix||pIn);
+    }
+  }
+
+  // ── Post-process: remove self-intersecting loops ──────────────────
+  // Find ALL self-intersections, extract all candidate sub-polygons,
+  // and keep only the one with the LARGEST area (the outer buffer).
+  function segIsect(a,b,c,d){
+    const tol = (parseFloat(document.getElementById('buf-tol').value)||10) / 1000;
+    const d1=[b[0]-a[0],b[1]-a[1]], d2=[d[0]-c[0],d[1]-c[1]];
+    const den=d1[0]*d2[1]-d1[1]*d2[0];
+    if(Math.abs(den)<1e-10) return null;
+    const t=((c[0]-a[0])*d2[1]-(c[1]-a[1])*d2[0])/den;
+    const s=((c[0]-a[0])*d1[1]-(c[1]-a[1])*d1[0])/den;
+    if(t>tol&&t<1-tol&&s>tol&&s<1-tol)
+      return [a[0]+t*d1[0],a[1]+t*d1[1]];
+    return null;
+  }
+
+  function polyArea(pts){
+    let a=0;
+    for(let i=0;i<pts.length;i++){
+      const p=pts[i],q=pts[(i+1)%pts.length];
+      a+=p[0]*q[1]-q[0]*p[1];
+    }
+    return Math.abs(a/2);
+  }
+
+  function removeLoops(pts){
+    let p = pts.slice();
+    // Run until no intersections remain (guard = generous upper bound)
+    for(let guard=0; guard < p.length * 4; guard++){
+      let found = false;
+      for(let i=0; i<p.length-1; i++){
+        for(let j=i+2; j<p.length; j++){
+          const jNext = (j+1)%p.length;
+          if(i===0 && jNext===0) continue;
+          const ix = segIsect(p[i],p[i+1],p[j],p[jNext]);
+          if(ix){
+            const loopA = [ix, ...p.slice(i+1, j+1)];
+            const loopB = [ix, ...p.slice(j+1), ...p.slice(0, i+1)];
+            // Always keep the larger-area polygon (the outer buffer)
+            p = polyArea(loopA) >= polyArea(loopB) ? loopA : loopB;
+            found = true;
+            break;
+          }
+        }
+        if(found) break;
+      }
+      if(!found) break; // no intersections remain — done
+    }
+    return p;
+  }
+
+  const cleaned = removeLoops(result);
+  return cleaned.map(([x,y])=>[refLat+y/mLat,refLng+x/mLngVal]);
+}
+
+// ================================================================
+// GEOMETRY HELPERS
+// ================================================================
+function polyAreaM2(latlngs){
+  // Shoelace in local metres
+  const pts=latlngs.map(p=>({lat:p.lat,lng:p.lng}));
+  const n=pts.length;
+  const mLat=111320;
+  const refLat=pts.reduce((s,p)=>s+p.lat,0)/n;
+  const mLng=111320*Math.cos(refLat*Math.PI/180);
+  const mx=pts.map(p=>[(p.lng-pts[0].lng)*mLng,(p.lat-pts[0].lat)*mLat]);
+  let area=0;
+  for(let i=0;i<n;i++){const a=mx[i],b=mx[(i+1)%n];area+=a[0]*b[1]-b[0]*a[1];}
+  return Math.abs(area/2);
+}
+
+function polyPerimM(latlngs){
+  let d=0;
+  for(let i=0;i<latlngs.length;i++) d+=haversine(latlngs[i],latlngs[(i+1)%latlngs.length]);
+  return d;
+}
+
+function midLatLng(a,b){return L.latLng((a.lat+b.lat)/2,(a.lng+b.lng)/2);}
+
+function drawDistLines(){
+  gDist.clearLayers();
+  if(!S.buildingLayer) return;
+  const bPts = S.buildingLayer.getLatLngs()[0];
+  S.plots.forEach(p=>{
+    if(!p.layer) return;
+    const pPts = p.layer.getLatLngs()[0];
+    // Use true segment-to-segment closest points — may be mid-edge on either polygon
+    const {dist, bPt, pPt} = polyPolyClosest(bPts, pPts);
+    if(!bPt||!pPt) return;
+
+    // Dashed measurement line between the two true closest points
+    L.polyline([bPt, pPt],{
+      color: p.color||'#fff', weight:1.5, dashArray:'5,4', opacity:0.9
+    }).addTo(gDist);
+
+    // Small dot markers at each end to show exact measurement points
+    L.circleMarker(bPt,{radius:4, color:'#fff', weight:1.5,
+      fillColor:'#ff6b35', fillOpacity:1}).addTo(gDist);
+    L.circleMarker(pPt,{radius:4, color:'#fff', weight:1.5,
+      fillColor: p.color||'#fff', fillOpacity:1}).addTo(gDist);
+
+    // Arrow pointing from building toward plot at the plot end
+    const bearing = Math.atan2(pPt.lng-bPt.lng, pPt.lat-bPt.lat)*180/Math.PI;
+    L.marker(pPt,{icon:L.divIcon({
+      className:'',
+      html:`<div style="transform:rotate(${bearing}deg);color:${p.color||'#fff'};font-size:13px;line-height:1;margin-left:-6px;margin-top:-6px;text-shadow:0 0 3px #000">▲</div>`,
+      iconSize:[13,13], iconAnchor:[6,6]
+    })}).addTo(gDist);
+
+    // Distance label at midpoint — white background, centred over the line
+    const mid = midLatLng(bPt, pPt);
+    const distLabel = `${dist.toFixed(1)}m`;
+    const labelW = Math.max(46, distLabel.length * 8 + 14); // estimate pixel width
+    L.marker(mid,{icon:L.divIcon({
+      className:'',
+      html:`<div style="background:#fff;border:1.5px solid ${p.color||'#333'};padding:2px 6px;font-family:monospace;font-size:10px;color:#111;font-weight:bold;border-radius:2px;white-space:nowrap;text-align:center;width:${labelW}px;box-sizing:border-box;">${distLabel}</div>`,
+      iconSize:[labelW, 20],
+      iconAnchor:[labelW/2, 24]
+    })}).addTo(gDist);
+  });
+}
+
+function drawBuffers(){
+  gBuf.clearLayers();
+  if(!S.buildingLayer) return;
+  const pts = S.buildingLayer.getLatLngs()[0];
+  // Update building stats
+  const area = polyAreaM2(pts);
+  const perim = polyPerimM(pts);
+  S.buildingArea = area;
+  S.buildingPerim = perim;
+  updateBuildingCard();
+  if(document.getElementById('l-buf').checked){
+    const d1 = parseFloat(document.getElementById('buf-d1').value)||100;
+    const d2 = parseFloat(document.getElementById('buf-d2').value)||150;
+    S.buf50  = L.polygon(offsetPolygon(pts,d1),
+      {color:'#ffc800',weight:2,dashArray:'7,4',fillColor:'#ffc800',fillOpacity:.05}).addTo(gBuf);
+    S.buf100 = L.polygon(offsetPolygon(pts,d2),
+      {color:'#ff5050',weight:2,dashArray:'9,5',fillColor:'#ff5050',fillOpacity:.03}).addTo(gBuf);
+    // Update legend labels
+    document.getElementById('leg-buf1').textContent = d1+'m buffer';
+    document.getElementById('leg-buf2').textContent = d2+'m buffer';
+  }
+  updateAllDist();
+  drawDistLines();
+}
+
+// ================================================================
+// DISTANCE: shortest from any plot edge to building perimeter
+// ================================================================
+// ================================================================
+// TRUE SEGMENT-TO-SEGMENT CLOSEST POINTS
+// Returns the exact closest point on segment AB and closest point on
+// segment CD, plus the distance between them.
+// This covers all cases: mid-edge to mid-edge, vertex to edge, vertex to vertex.
+// ================================================================
+function segSegClosest(a, b, c, d){
+  // Work in local Cartesian metres for accuracy
+  const mLat = 111320;
+  const refLat = (a.lat+b.lat+c.lat+d.lat)/4;
+  const mLng = 111320*Math.cos(refLat*Math.PI/180);
+
+  function toM(p){ return [(p.lng)*mLng, (p.lat)*mLat]; }
+  const A=toM(a), B=toM(b), C=toM(c), D=toM(d);
+
+  const u=[B[0]-A[0], B[1]-A[1]];
+  const v=[D[0]-C[0], D[1]-C[1]];
+  const w=[A[0]-C[0], A[1]-C[1]];
+
+  const uu=u[0]*u[0]+u[1]*u[1];
+  const uv=u[0]*v[0]+u[1]*v[1];
+  const vv=v[0]*v[0]+v[1]*v[1];
+  const wu=w[0]*u[0]+w[1]*u[1];
+  const wv=w[0]*v[0]+w[1]*v[1];
+
+  const denom = uu*vv - uv*uv;
+  let s, t;
+
+  if(denom < 1e-10){
+    // Parallel segments — clamp s=0, find best t
+    s = 0;
+    t = vv > 1e-10 ? wv/vv : 0;
+  } else {
+    s = (uv*wv - vv*wu) / denom;
+    t = (uu*wv - uv*wu) / denom;
+  }
+
+  s = Math.max(0, Math.min(1, s));
+  t = Math.max(0, Math.min(1, t));
+
+  // Recompute s given clamped t, then re-clamp s
+  if(denom >= 1e-10){
+    s = Math.max(0, Math.min(1, (uv*t - wu) / uu || 0));
+    t = Math.max(0, Math.min(1, (uv*s + wv) / vv || 0));
+  }
+
+  // Closest points in Cartesian
+  const pA = [A[0]+s*u[0], A[1]+s*u[1]];
+  const pC = [C[0]+t*v[0], C[1]+t*v[1]];
+
+  // Convert back to lat/lng
+  function fromM(p){ return {lat:p[1]/mLat, lng:p[0]/mLng}; }
+  const ptOnAB = fromM(pA);
+  const ptOnCD = fromM(pC);
+  const dist   = haversine(ptOnAB, ptOnCD);
+
+  return {dist, ptOnAB, ptOnCD};
+}
+
+// Find the true minimum distance between two polygon perimeters,
+// returning the exact closest points on each (may be mid-edge).
+function polyPolyClosest(bPts, pPts){
+  let best = Infinity, bPt = null, pPt = null;
+  const bn = bPts.length, pn = pPts.length;
+  for(let i=0;i<bn;i++){
+    const bA = bPts[i], bB = bPts[(i+1)%bn];
+    for(let j=0;j<pn;j++){
+      const pA = pPts[j], pB = pPts[(j+1)%pn];
+      const {dist, ptOnAB, ptOnCD} = segSegClosest(bA, bB, pA, pB);
+      if(dist < best){ best=dist; bPt=ptOnAB; pPt=ptOnCD; }
+    }
+  }
+  return {dist:best, bPt, pPt};
+}
+
+function ptSegDist(p,a,b){
+  // Kept for any other callers — projects p onto segment a-b
+  const ab=haversine(a,b); if(ab<0.01) return haversine(p,a);
+  const t=Math.max(0,Math.min(1,
+    ((p.lat-a.lat)*(b.lat-a.lat)+(p.lng-a.lng)*(b.lng-a.lng))/
+    ((b.lat-a.lat)**2+(b.lng-a.lng)**2)));
+  return haversine(p,{lat:a.lat+t*(b.lat-a.lat),lng:a.lng+t*(b.lng-a.lng)});
+}
+
+function minDist(plotLayer){
+  if(!S.buildingLayer) return null;
+  const bp = S.buildingLayer.getLatLngs()[0];
+  const pp = plotLayer.getLatLngs()[0];
+  const {dist} = polyPolyClosest(bp, pp);
+  return dist===Infinity ? null : dist;
+}
+
+function classifyBAL(d){
+  if(d===null) return '—';
+  if(d<10)  return 'BAL-FZ';
+  if(d<20)  return 'BAL-40';
+  if(d<40)  return 'BAL-29';
+  if(d<60)  return 'BAL-19';
+  if(d<100) return 'BAL-12.5';
+  return 'BAL-LOW';
+}
+
+function updateAllDist(){
+  S.plots.forEach(p=>{p.dist=minDist(p.layer);p.bal=classifyBAL(p.dist);});
+  renderPlots();
+  drawDistLines();
+}
+
+// ================================================================
+// SNAP RING MARKERS — with pulse on first point + proximity highlight
+// ================================================================
+let _snapHighlighted = null; // track which marker is currently highlighted
+
+function showSnap(pts){
+  gSnp.clearLayers();
+  _snapHighlighted = null;
+  if(!pts.length) return;
+
+  pts.forEach((p, i)=>{
+    const isFirst = (i === 0);
+    const canClose = pts.length >= 3;
+
+    // Base style
+    const baseRadius   = isFirst ? 8 : 5;
+    const baseColor    = isFirst ? (canClose ? '#00ff88' : '#ff6b35') : '#ff6b35';
+    const baseFill     = isFirst ? (canClose ? '#00ff88' : '#ff6b35') : '#ff6b35';
+    const baseOpacity  = isFirst ? 1 : 0.85;
+
+    const m = L.circleMarker(p, {
+      radius: baseRadius,
+      color: '#fff',
+      weight: isFirst ? 2 : 1.5,
+      fillColor: baseFill,
+      fillOpacity: baseOpacity,
+      className: isFirst ? 'snap-close-pt' : 'snap-pt',
+      pane: 'markerPane',
+    }).addTo(gSnp);
+
+    // Pulse ring on first point (closing target)
+    if(isFirst){
+      // Add a larger transparent pulsing ring underneath
+      const pulse = L.circleMarker(p, {
+        radius: 14,
+        color: canClose ? '#00ff88' : '#ff6b35',
+        weight: 2,
+        fillOpacity: 0,
+        opacity: 0.6,
+        className: 'snap-pulse-ring',
+        interactive: false,
+      }).addTo(gSnp);
+
+      // Tooltip
+      m.bindTooltip(canClose ? '● Click to close polygon' : 'First point', {
+        permanent: false, direction: 'top', offset:[0,-10],
+        className: 'snap-tip'
+      });
+
+      // Click to close
+      m.on('click', e=>{
+        L.DomEvent.stopPropagation(e);
+        if(S.mode==='draw-building' && pts.length>=3) finishDraw('building');
+        else if(S.mode==='draw-plot' && pts.length>=3) finishDraw('plot');
+      });
+
+      // Store reference for proximity highlighting
+      m._isFirst = true;
+      m._pulseRing = pulse;
+      m._canClose = canClose;
+      _snapHighlighted = null;
+    } else {
+      m.bindTooltip('Point '+(i+1), {permanent:false, direction:'top', offset:[0,-8]});
+    }
+  });
+}
+
+// Proximity snap highlight — called from mousemove
+const SNAP_RADIUS_PX = 24; // pixel radius to trigger highlight
+
+function updateSnapHighlight(mouseLatLng){
+  if(!mouseLatLng) return;
+  let closestDist = Infinity;
+  let closestLayer = null;
+
+  gSnp.eachLayer(layer=>{
+    if(!layer.getLatLng) return;
+    const pt = map.latLngToContainerPoint(layer.getLatLng());
+    const mp = map.latLngToContainerPoint(mouseLatLng);
+    const dx = pt.x-mp.x, dy = pt.y-mp.y;
+    const dist = Math.sqrt(dx*dx+dy*dy);
+    if(dist < closestDist){ closestDist=dist; closestLayer=layer; }
+  });
+
+  if(closestDist < SNAP_RADIUS_PX && closestLayer){
+    if(_snapHighlighted !== closestLayer){
+      // Restore previous
+      if(_snapHighlighted) restoreSnapMarker(_snapHighlighted);
+      // Highlight new
+      highlightSnapMarker(closestLayer);
+      _snapHighlighted = closestLayer;
+    }
+  } else {
+    if(_snapHighlighted){ restoreSnapMarker(_snapHighlighted); _snapHighlighted=null; }
+  }
+}
+
+function highlightSnapMarker(m){
+  if(!m.setStyle) return;
+  const isFirst = m._isFirst;
+  m.setStyle({
+    radius: isFirst ? 12 : 8,
+    color: '#fff',
+    weight: 2.5,
+    fillColor: isFirst ? (m._canClose?'#00ff88':'#ffaa00') : '#ffaa00',
+    fillOpacity: 1,
+  });
+  document.getElementById('map').style.cursor = isFirst && m._canClose ? 'pointer' : 'crosshair';
+}
+
+function restoreSnapMarker(m){
+  if(!m.setStyle) return;
+  const isFirst = m._isFirst;
+  m.setStyle({
+    radius: isFirst ? 8 : 5,
+    color: '#fff',
+    weight: isFirst ? 2 : 1.5,
+    fillColor: isFirst ? (m._canClose?'#00ff88':'#ff6b35') : '#ff6b35',
+    fillOpacity: isFirst ? 1 : 0.85,
+  });
+  document.getElementById('map').style.cursor = '';
+}
+
+// ================================================================
+// DRAWING
+// ================================================================
+function handleDrawClick(e,type){
+  const pts=type==='building'?S.drawPts:S.plotPts;
+  pts.push(e.latlng);
+  previewDraw(type);
+  notify(`Point ${pts.length} added — click first point or double-click to close`,'inf');
+}
+
+function previewDraw(type){
+  gDrw.clearLayers();
+  const pts=type==='building'?S.drawPts:S.plotPts;
+  const col=type==='building'?'#ff6b35':'#3498db';
+  if(pts.length>1) L.polyline([...pts,pts[0]],{color:col,weight:2,dashArray:'5,3',opacity:.8}).addTo(gDrw);
+  showSnap(pts);
+}
+
+function finishDraw(type){
+  const pts=type==='building'?S.drawPts:S.plotPts;
+  if(pts.length<3){notify('Need at least 3 points','err');return;}
+  gDrw.clearLayers(); gSnp.clearLayers();
+
+  if(type==='building'){
+    if(S.buildingLayer) gBld.removeLayer(S.buildingLayer);
+    S.buildingLayer=L.polygon([...pts],
+      {color:'#ff6b35',weight:2.5,fillColor:'#ff6b35',fillOpacity:.15}).addTo(gBld);
+    S.buildingLayer.bindTooltip('Building Envelope');
+    document.getElementById('st-bld').textContent=pts.length+' pts';
+    S.drawPts=[];
+    setMode('navigate');
+    drawBuffers();
+    updateBuildingCard();
+    notify('Building envelope saved — buffers generated','ok');
+  } else {
+    S.plotPts=[...pts];
+    document.getElementById('pm').classList.add('vis');
+    document.getElementById('pm-name').value='Plot '+String.fromCharCode(65+S.plots.length);
+  }
+}
+
+// ================================================================
+// MAP EVENTS
+// ================================================================
+map.on('click',e=>{
+  if(S.mode==='draw-building') handleDrawClick(e,'building');
+  else if(S.mode==='draw-plot')   handleDrawClick(e,'plot');
+  else if(S.mode==='measure')     handleMsrClick(e);
+  else if(S.mode==='add-ref-pt')  handleRefClick(e);
+});
+
+map.on('dblclick',e=>{
+  L.DomEvent.stopPropagation(e);
+  if(S.mode==='draw-building'&&S.drawPts.length>=3) finishDraw('building');
+  else if(S.mode==='draw-plot'&&S.plotPts.length>=3) finishDraw('plot');
+  else if(S.mode==='measure') finishMsr();
+});
+
+map.on('mousemove',e=>{
+  document.getElementById('crd').textContent=e.latlng.lat.toFixed(5)+', '+e.latlng.lng.toFixed(5);
+  if(S.mode==='draw-building'||S.mode==='draw-plot'){
+    const pts=S.mode==='draw-building'?S.drawPts:S.plotPts;
+    if(!pts.length) return;
+    const col=S.mode==='draw-building'?'#ff6b35':'#3498db';
+    gDrw.clearLayers();
+    L.polyline([...pts,e.latlng],{color:col,weight:1.5,dashArray:'4,3',opacity:.5}).addTo(gDrw);
+    if(pts.length>1) L.polyline([pts[0],e.latlng],{color:col,weight:1,dashArray:'3,5',opacity:.25}).addTo(gDrw);
+    showSnap(pts);
+    updateSnapHighlight(e.latlng);
+  }
+});
+
+map.on('zoomend',()=>document.getElementById('st-zoom').textContent=map.getZoom());
+document.getElementById('st-zoom').textContent=map.getZoom();
+
+// ================================================================
+// MEASURE
+// ================================================================
+function handleMsrClick(e){
+  S.msrPts.push(e.latlng);
+  gMsr.clearLayers();
+  if(S.msrPts.length>1){
+    L.polyline(S.msrPts,{color:'#fff',weight:1.5,dashArray:'4,3'}).addTo(gMsr);
+    let tot=0;
+    for(let i=1;i<S.msrPts.length;i++) tot+=S.msrPts[i-1].distanceTo(S.msrPts[i]);
+    const last=S.msrPts[S.msrPts.length-1];
+    L.marker(last,{icon:L.divIcon({className:'',
+      html:`<div style="background:rgba(15,17,23,.9);border:1px solid #fff;padding:2px 6px;font-family:monospace;font-size:11px;color:#fff;border-radius:2px">${tot.toFixed(1)}m</div>`,
+      iconAnchor:[0,0]})}).addTo(gMsr);
+  }
+  S.msrPts.forEach(p=>L.circleMarker(p,{radius:3,color:'#fff',fillOpacity:1,weight:1}).addTo(gMsr));
+}
+function finishMsr(){S.msrPts=[];gMsr.clearLayers();setMode('navigate');}
+
+// ================================================================
+// TOOLBAR BUTTONS
+// ================================================================
+document.getElementById('tb-bld').onclick=()=>{
+  if(S.mode==='draw-building'){setMode('navigate');S.drawPts=[];gDrw.clearLayers();gSnp.clearLayers();}
+  else{setMode('draw-building');notify('Click to place corners. Double-click or click first point to close.','inf');}
+};
+document.getElementById('tb-plt').onclick=()=>{
+  if(S.mode==='draw-plot'){setMode('navigate');S.plotPts=[];gDrw.clearLayers();gSnp.clearLayers();}
+  else{setMode('draw-plot');notify('Click to draw plot outline. Double-click or click first point to close.','inf');}
+};
+document.getElementById('tb-msr').onclick=()=>{
+  if(S.mode==='measure'){gMsr.clearLayers();S.msrPts=[];setMode('navigate');}
+  else{setMode('measure');notify('Click to place measure points. Double-click to finish.','inf');}
+};
+document.getElementById('tb-top').onclick=()=>{
+  const cb=document.getElementById('l-top');
+  cb.checked=!cb.checked; cb.dispatchEvent(new Event('change'));
+};
+document.getElementById('tb-pln').onclick=()=>document.getElementById('btn-uplpln').click();
+
+document.getElementById('tb-clr').onclick=()=>{
+  if(!confirm('Clear everything?')) return;
+  stopEdit(true); hideEditBar();
+  [gBld,gBuf,gPlt,gPh,gDrw,gMsr,gPln,gSnp,gEdt,gDist].forEach(g=>g.clearLayers());
+  Object.assign(S,{buildingLayer:null,buf50:null,buf100:null,drawPts:[],plotPts:[],
+    msrPts:[],plots:[],photos:[],planOverlay:null,refPts:[],
+    editingPlotId:null,editingBuilding:false,vertHandles:[],buildingArea:0,buildingPerim:0});
+  renderPlots();
+  document.getElementById('phl').innerHTML='';
+  document.getElementById('st-bld').textContent='—';
+  document.getElementById('st-plt').textContent='0';
+  document.getElementById('st-ph').textContent='0';
+  document.getElementById('plt-count').textContent='0 plots';
+  document.getElementById('plnctrl').classList.remove('vis');
+  updateBuildingCard();
+  setMode('navigate');
+  notify('All cleared','ok');
+};
+
+// ================================================================
+// BUILDING CARD
+// ================================================================
+function updateBuildingCard(){
+  const card = document.getElementById('bld-card');
+  const stats = document.getElementById('bld-stats');
+  if(!S.buildingLayer){card.style.display='none';return;}
+  card.style.display='block';
+  const area = S.buildingArea||0, perim = S.buildingPerim||0;
+  const pts = S.buildingLayer.getLatLngs()[0];
+  stats.innerHTML =
+    `Area: <strong style="color:var(--text)">${area>=10000?(area/10000).toFixed(3)+' ha':area.toFixed(1)+' m²'}</strong><br>`+
+    `Perimeter: <strong style="color:var(--text)">${perim.toFixed(1)} m</strong><br>`+
+    `Vertices: <strong style="color:var(--text)">${pts.length}</strong>`;
+}
+
+document.getElementById('btn-rebuf').onclick=()=>drawBuffers();
+document.getElementById('buf-d1').onkeydown=e=>{if(e.key==='Enter')drawBuffers();};
+document.getElementById('buf-d2').onkeydown=e=>{if(e.key==='Enter')drawBuffers();};
+document.getElementById('buf-tol').oninput=e=>{
+  document.getElementById('buf-tol-val').textContent=e.target.value+'%';
+  if(S.buildingLayer) drawBuffers();
+};
+
+document.getElementById('btn-zoom-bld').onclick=()=>{
+  if(S.buildingLayer) map.fitBounds(S.buildingLayer.getBounds(),{padding:[60,60]});
+};
+document.getElementById('btn-del-bld').onclick=()=>{
+  if(!confirm('Delete building envelope?')) return;
+  if(S.buildingLayer){gBld.removeLayer(S.buildingLayer);S.buildingLayer=null;}
+  gBuf.clearLayers();gDist.clearLayers();
+  S.buf50=null;S.buf100=null;
+  document.getElementById('st-bld').textContent='—';
+  updateBuildingCard();updateAllDist();
+};
+
+// ================================================================
+// LAYER TOGGLES
+// ================================================================
+document.getElementById('l-str').onchange=e=>e.target.checked?lStr.addTo(map):map.removeLayer(lStr);
+document.getElementById('l-sat').onchange=e=>e.target.checked?lSat.addTo(map):map.removeLayer(lSat);
+document.getElementById('l-top').onchange=e=>{
+  e.target.checked?lTop.addTo(map):map.removeLayer(lTop);
+  document.getElementById('tb-top').classList.toggle('on',e.target.checked);
+};
+document.getElementById('l-buf').onchange=()=>drawBuffers();
+document.getElementById('l-bfp').onchange=e=>{
+  if(e.target.checked){
+    document.getElementById('bfp-op-row').style.display='flex';
+    notify('Loading WA Bushfire Prone Areas — trying SLIP 2025 service…','inf');
+    // Try primary (2025 public-services host)
+    _bfpActive = lBFP;
+    lBFP.addTo(map);
+    let tried1=false, tried2=false;
+    lBFP.on('tileerror', function try2(){
+      if(tried1) return; tried1=true;
+      notify('Primary BFP service unavailable — trying fallback…','inf');
+      map.removeLayer(lBFP);
+      _bfpActive = lBFP2;
+      lBFP2.addTo(map);
+      lBFP2.on('tileerror', function try3(){
+        if(tried2) return; tried2=true;
+        notify('WMS fallback unavailable — trying tile service…','inf');
+        map.removeLayer(lBFP2);
+        _bfpActive = lBFP3;
+        lBFP3.addTo(map);
+        lBFP3.on('tileerror', ()=>{
+          notify('⚠ All BFP sources failed. Open the tool from a web server (not file://) or check your internet connection.','err');
+        });
+      });
+    });
+  } else {
+    [lBFP, lBFP2, lBFP3].forEach(l=>{ try{map.removeLayer(l);}catch(e){} });
+    _bfpActive = null;
+    document.getElementById('bfp-op-row').style.display='none';
+  }
+};
+document.getElementById('bfp-op').oninput=e=>{
+  document.getElementById('bfp-ov').textContent=e.target.value+'%';
+  if(_bfpActive) _bfpActive.setOpacity(e.target.value/100);
+};
+document.getElementById('l-pln').onchange=e=>{
+  if(S.planOverlay){e.target.checked?gPln.addLayer(S.planOverlay):gPln.removeLayer(S.planOverlay);}
+};
+document.getElementById('pln-op').oninput=e=>{
+  document.getElementById('pln-ov').textContent=e.target.value+'%';
+  if(S.planOverlay) S.planOverlay.setOpacity(e.target.value/100);
+};
+
+// ================================================================
+// PLAN UPLOAD
+// ================================================================
+document.getElementById('btn-uplpln').onclick=()=>document.getElementById('pln-file').click();
+document.getElementById('pln-file').onchange=e=>{
+  const f=e.target.files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=ev=>{
+    S.planImgData=ev.target.result;
+    const c=map.getCenter(), off=0.0008;
+    if(S.planOverlay) gPln.removeLayer(S.planOverlay);
+    S.planOverlay=L.imageOverlay(S.planImgData,
+      [[c.lat-off,c.lng-off],[c.lat+off,c.lng+off]],
+      {opacity:document.getElementById('pln-op').value/100,interactive:true}).addTo(gPln);
+    document.getElementById('l-pln').checked=true;
+    document.getElementById('plnctrl').classList.add('vis');
+    notify('Plan uploaded. Adjust opacity or georeference to align.','inf');
+  };
+  r.readAsDataURL(f); e.target.value='';
+};
+
+// ================================================================
+// GEOREFERENCING
+// ================================================================
+document.getElementById('btn-refpt').onclick=()=>{
+  if(!S.planOverlay){notify('Upload a plan first','err');return;}
+  if(S.refPts.length>=3){notify('Max 3 reference points — reset first','err');return;}
+  setMode('add-ref-pt');
+  notify('Click on map where reference point '+(S.refPts.length+1)+' is located','inf');
+};
+
+function handleRefClick(e){
+  const n=S.refPts.length+1;
+  const xp=prompt('Ref point '+n+': Image X % (0=left, 100=right):');
+  const yp=prompt('Ref point '+n+': Image Y % (0=top, 100=bottom):');
+  if(xp===null||yp===null){setMode('navigate');return;}
+  S.refPts.push({ix:+xp/100,iy:+yp/100,ll:e.latlng});
+  document.getElementById('rpc').textContent=S.refPts.length;
+  L.circleMarker(e.latlng,{radius:7,color:'#f0a500',fillOpacity:.85,weight:2})
+    .addTo(gPln).bindTooltip('Ref '+n,{permanent:true,direction:'top'});
+  setMode('navigate');
+  notify('Ref '+n+' set. Add more or click APPLY.','ok');
+}
+
+document.getElementById('btn-refapply').onclick=()=>{
+  if(!S.planOverlay||S.refPts.length<2){notify('Need at least 2 reference points','err');return;}
+  const r=S.refPts;
+  const dlat=r[1].ll.lat-r[0].ll.lat, dlng=r[1].ll.lng-r[0].ll.lng;
+  const diy=r[1].iy-r[0].iy, dix=r[1].ix-r[0].ix;
+  if(Math.abs(diy)<0.001||Math.abs(dix)<0.001){notify('Points too close together','err');return;}
+  const sw=[r[0].ll.lat-r[0].iy*(dlat/diy), r[0].ll.lng-r[0].ix*(dlng/dix)];
+  const ne=[sw[0]+dlat/diy, sw[1]+dlng/dix];
+  S.planOverlay.setBounds([sw,ne]);
+  notify('Georeference applied!','ok');
+};
+
+document.getElementById('btn-refclr').onclick=()=>{
+  S.refPts=[];document.getElementById('rpc').textContent='0';notify('Reference points cleared','inf');
+};
+
+// ================================================================
+// PLOT MODAL
+// ================================================================
+document.getElementById('pm-vegcat').onchange=function(){
+  const subs=VEG_SUBS[this.value]||[];
+  const sel=document.getElementById('pm-vegsub');
+  sel.innerHTML=subs.length
+    ?subs.map(s=>`<option>${s}</option>`).join('')
+    :'<option value="">—</option>';
+};
+
+document.querySelectorAll('.co').forEach(el=>el.onclick=function(){
+  document.querySelectorAll('.co').forEach(o=>o.classList.remove('sel'));
+  this.classList.add('sel'); S.selColor=this.dataset.c;
+});
+
+document.getElementById('pm-cancel').onclick=()=>{
+  document.getElementById('pm').classList.remove('vis');
+  S.plotPts=[];setMode('navigate');
+};
+
+document.getElementById('pm-save').onclick=()=>{
+  const name=document.getElementById('pm-name').value||'Plot '+(S.plots.length+1);
+  const vegcat=document.getElementById('pm-vegcat').value;
+  const vegsub=document.getElementById('pm-vegsub').value;
+  const slope=document.getElementById('pm-slope').value;
+  const notes=document.getElementById('pm-notes').value;
+  const color=S.selColor;
+  const pts=S.plotPts;
+
+  const layer=L.polygon([...pts],{color,weight:2,fillColor:color,fillOpacity:.28}).addTo(gPlt);
+  layer.bindTooltip(name);
+  const dist=minDist(layer);
+  const plot={id:Date.now(),name,vegcat,vegsub,slope,notes,color,layer,dist,bal:classifyBAL(dist)};
+  S.plots.push(plot);
+  layer.on('click',()=>selectPlot(plot.id));
+
+  document.getElementById('pm').classList.remove('vis');
+  document.getElementById('pm-name').value='';
+  document.getElementById('pm-vegcat').value='';
+  document.getElementById('pm-vegsub').innerHTML='<option>— select category first —</option>';
+  document.getElementById('pm-notes').value='';
+  S.plotPts=[]; setMode('navigate');
+  renderPlots();
+  document.getElementById('st-plt').textContent=S.plots.length;
+  document.getElementById('plt-count').textContent=S.plots.length+' plot'+(S.plots.length!==1?'s':'');
+  notify(name+' saved — '+( dist!==null?dist.toFixed(1)+'m':'no building')+ ' → '+plot.bal,'ok');
+};
+
+// ================================================================
+// PLOT LIST
+// ================================================================
+function selectPlot(id){
+  document.querySelectorAll('.pi').forEach(el=>el.classList.remove('sel'));
+  const el=document.querySelector('.pi[data-id="'+id+'"]');
+  if(el){el.classList.add('sel');el.scrollIntoView({behavior:'smooth',block:'nearest'});}
+}
+
+function renderPlots(){
+  const el=document.getElementById('pl');
+  if(!S.plots.length){
+    el.innerHTML='<div style="font-size:10px;color:var(--muted);padding:4px 0">No plots yet. Use PLOT tool.</div>';
+    return;
+  }
+  el.innerHTML='';
+  S.plots.forEach(p=>{
+    const dstr=p.dist!==null&&p.dist!==undefined?p.dist.toFixed(1)+'m':'—';
+    const d=document.createElement('div');
+    d.className='pi'; d.dataset.id=p.id;
+    d.innerHTML=`<div class="ph">
+      <div class="psw" style="background:${p.color}"></div>
+      <div class="pn">${p.name}</div>
+      <div class="pd">${dstr}</div>
+    </div>
+    <div class="pc">${p.vegcat||'—'}${p.vegsub?' · '+p.vegsub:''} · ${p.slope||'—'} · <strong style="color:${balColor(p.bal)}">${p.bal}</strong></div>
+    ${p.notes?`<div style="font-size:9px;color:var(--muted);margin-top:2px">${p.notes}</div>`:''}
+    <div class="pb-row">
+      <button class="pb" onclick="zoomPlt(${p.id})">ZOOM</button>
+      <button class="pb ed" onclick="editPltInfo(${p.id})">EDIT INFO</button>
+      <button class="pb ed" onclick="editPltShape(${p.id})">EDIT SHAPE</button>
+      <button class="pb dl" onclick="delPlt(${p.id})">DELETE</button>
+    </div>`;
+    d.onclick=()=>selectPlot(p.id);
+    el.appendChild(d);
+  });
+}
+
+window.zoomPlt=id=>{const p=S.plots.find(x=>x.id===id);if(p)map.fitBounds(p.layer.getBounds(),{padding:[40,40]});};
+window.delPlt=id=>{
+  const i=S.plots.findIndex(x=>x.id===id);if(i<0)return;
+  gPlt.removeLayer(S.plots[i].layer);S.plots.splice(i,1);
+  renderPlots();
+  document.getElementById('st-plt').textContent=S.plots.length;
+  document.getElementById('plt-count').textContent=S.plots.length+' plot'+(S.plots.length!==1?'s':'');
+};
+
+window.editPltInfo=id=>{
+  const p=S.plots.find(x=>x.id===id);if(!p)return;
+  const n=prompt('Plot name:',p.name);if(n===null)return;
+  const v=prompt('Vegetation category:',p.vegcat||'');if(v===null)return;
+  const s=prompt('Slope:',p.slope||'');if(s===null)return;
+  const nt=prompt('Notes:',p.notes||'');if(nt===null)return;
+  p.name=n||p.name; p.vegcat=v; p.slope=s; p.notes=nt;
+  p.layer.bindTooltip(p.name);
+  renderPlots();notify('Plot updated','ok');
+};
+
+// ================================================================
+// PERSISTENT SHAPE EDITING
+// ================================================================
+let _editOrigPts  = null;   // snapshot for CANCEL
+let _editCurPts   = null;   // live array we own — updated on every drag
+let _editType     = null;   // 'plot' | 'building'
+let _editPlotId   = null;
+
+function showEditBar(label){
+  document.getElementById('edit-bar-label').textContent = label;
+  document.getElementById('edit-bar').style.display = 'flex';
+}
+function hideEditBar(){
+  document.getElementById('edit-bar').style.display = 'none';
+}
+
+// Apply _editCurPts back to the layer
+function applyEditPts(){
+  if(_editType==='plot'){
+    const p=S.plots.find(x=>x.id===_editPlotId); if(!p) return;
+    p.layer.setLatLngs(_editCurPts.map(pt=>L.latLng(pt.lat,pt.lng)));
+    p.dist=minDist(p.layer); p.bal=classifyBAL(p.dist);
+  } else {
+    if(!S.buildingLayer) return;
+    S.buildingLayer.setLatLngs(_editCurPts.map(pt=>L.latLng(pt.lat,pt.lng)));
+  }
+}
+
+// Position each circleMarker to match _editCurPts
+function syncHandles(){
+  S.vertHandles.forEach((h,i)=>{
+    if(_editCurPts[i]) h.setLatLng(L.latLng(_editCurPts[i].lat, _editCurPts[i].lng));
+  });
+}
+
+function startEditSession(type, id, pts, label){
+  // Clear any existing edit first (without restoring — caller decides)
+  gEdt.clearLayers();
+  S.vertHandles=[];
+
+  _editType    = type;
+  _editPlotId  = id || null;
+  _editOrigPts = pts.map(p=>({lat:p.lat,lng:p.lng}));  // deep copy
+  _editCurPts  = pts.map(p=>({lat:p.lat,lng:p.lng}));  // working copy
+  S.editingBuilding = (type==='building');
+  S.editingPlotId   = (type==='plot') ? id : null;
+
+  const color = type==='building' ? '#ff6b35' : '#f0a500';
+
+  _editCurPts.forEach((pt, i)=>{
+    const h = L.circleMarker([pt.lat, pt.lng], {
+      radius:9, color:'#fff', fillColor:color, fillOpacity:1, weight:2
+    }).addTo(gEdt);
+
+    // ---- MOUSE ----
+    h.on('mousedown', e=>{
+      L.DomEvent.stopPropagation(e);
+      L.DomEvent.preventDefault(e);
+      map.dragging.disable();
+      map.getContainer().style.cursor='grabbing';
+      h.setStyle({radius:12, fillColor:'#fff', color:color}); // highlight
+
+      const onMove = ev=>{
+        const ll = map.containerPointToLatLng(map.mouseEventToContainerPoint(ev));
+        // Update our owned array
+        _editCurPts[i] = {lat:ll.lat, lng:ll.lng};
+        h.setLatLng(ll);
+        // Live-update the polygon shape
+        applyEditPts();
+      };
+      const onUp = ()=>{
+        map.getContainer().removeEventListener('mousemove', onMove);
+        map.getContainer().removeEventListener('mouseup',   onUp);
+        map.dragging.enable();
+        map.getContainer().style.cursor='';
+        h.setStyle({radius:9, fillColor:color, color:'#fff'}); // restore
+        // Silently keep polygon updated — do NOT call drawBuffers/renderPlots
+        // here as those rebuild DOM and re-enable map dragging, breaking
+        // multi-point editing. Full refresh happens when DONE is clicked.
+        applyEditPts();
+      };
+      map.getContainer().addEventListener('mousemove', onMove);
+      map.getContainer().addEventListener('mouseup',   onUp);
+    });
+
+    // ---- TOUCH ----
+    h.on('touchstart', e=>{
+      L.DomEvent.stopPropagation(e);
+      map.dragging.disable();
+      const onMove = ev=>{
+        ev.preventDefault();
+        const t=ev.touches[0];
+        const r=map.getContainer().getBoundingClientRect();
+        const ll=map.containerPointToLatLng(L.point(t.clientX-r.left, t.clientY-r.top));
+        _editCurPts[i]={lat:ll.lat,lng:ll.lng};
+        h.setLatLng(ll);
+        applyEditPts();
+      };
+      const onUp=()=>{
+        map.getContainer().removeEventListener('touchmove', onMove);
+        map.getContainer().removeEventListener('touchend',  onUp);
+        map.dragging.enable();
+        applyEditPts(); // keep polygon updated, defer full refresh to DONE
+      };
+      map.getContainer().addEventListener('touchmove', onMove, {passive:false});
+      map.getContainer().addEventListener('touchend',  onUp);
+    });
+
+    S.vertHandles.push(h);
+  });
+
+  showEditBar(label);
+  notify('Drag any handle freely. Move multiple points. Click ✓ DONE to save.','inf');
+}
+
+// Update only the distance/BAL text of one plot card without full re-render
+function updatePlotCard(id){
+  const p=S.plots.find(x=>x.id===id); if(!p) return;
+  const el=document.querySelector('.pi[data-id="'+id+'"]'); if(!el) return;
+  const dstr=p.dist!==null?p.dist.toFixed(1)+'m':'—';
+  const pd=el.querySelector('.pd'); if(pd) pd.textContent=dstr;
+  const pc=el.querySelector('.pc');
+  if(pc) pc.innerHTML=`${p.vegcat||'—'}${p.vegsub?' · '+p.vegsub:''} · ${p.slope||'—'} · <strong style="color:${balColor(p.bal)}">${p.bal}</strong>`;
+}
+
+function stopEdit(save){
+  const wasType = _editType;   // capture before nulling
+  const wasPlotId = _editPlotId;
+  if(!save && _editOrigPts){
+    // Restore to snapshot
+    _editCurPts = _editOrigPts.map(p=>({lat:p.lat,lng:p.lng}));
+    applyEditPts();
+    if(wasType==='building'){ drawBuffers(); updateBuildingCard(); }
+    else {
+      const p=S.plots.find(x=>x.id===wasPlotId);
+      if(p){ p.dist=minDist(p.layer); p.bal=classifyBAL(p.dist); }
+      drawBuffers();
+    }
+  }
+  // Clear handles first so renderPlots() doesn't see stale edit state
+  gEdt.clearLayers();
+  S.vertHandles=[];
+  S.editingPlotId=null;
+  S.editingBuilding=false;
+  _editOrigPts=null; _editCurPts=null; _editType=null; _editPlotId=null;
+  hideEditBar();
+  // Full refresh after state is clean
+  renderPlots();
+  if(wasType==='building') updateBuildingCard();
+  drawDistLines();
+}
+
+document.getElementById('edit-done').onclick   = ()=>{ stopEdit(true);  notify('Changes saved','ok'); };
+document.getElementById('edit-cancel').onclick = ()=>{ stopEdit(false); notify('Edit cancelled — shape restored','inf'); };
+
+// ---- Plot shape edit entry point ----
+window.editPltShape = id=>{
+  const p=S.plots.find(x=>x.id===id); if(!p) return;
+  const pts = p.layer.getLatLngs()[0].map(ll=>({lat:ll.lat,lng:ll.lng}));
+  startEditSession('plot', id, pts, 'Editing: '+p.name);
+};
+
+// ---- Building shape edit entry point ----
+document.getElementById('tb-bld').ondblclick   = ()=>editBuildingShape();
+document.getElementById('btn-edit-bld').onclick = ()=>editBuildingShape();
+function editBuildingShape(){
+  if(!S.buildingLayer){ notify('Draw a building first','err'); return; }
+  const pts = S.buildingLayer.getLatLngs()[0].map(ll=>({lat:ll.lat,lng:ll.lng}));
+  startEditSession('building', null, pts, 'Editing: Building Envelope');
+}
+
+// BAL CLASSIFY PANEL
+// ================================================================
+document.getElementById('tb-cls').onclick=()=>{
+  if(!S.plots.length){notify('No plots to classify','err');return;}
+  const c=document.getElementById('balp-plots');c.innerHTML='';
+  S.plots.forEach(p=>{
+    const d=document.createElement('div');d.className='bpr';
+    const ds=p.dist!==null?p.dist.toFixed(1)+'m':'no building';
+    d.innerHTML=`<h4><span style="display:inline-block;width:9px;height:9px;background:${p.color};margin-right:5px;border-radius:2px"></span>${p.name} — <span style="color:var(--accent2)">${ds}</span></h4>
+    <label>Vegetation</label>
+    <input type="text" id="bv-${p.id}" value="${p.vegcat||''}">
+    <label>Slope</label>
+    <select id="bs-${p.id}">
+      ${['Flat (0–5°)','Gentle (5–10°)','Moderate (10–18°)','Steep (18–26°)','Very Steep (>26°)']
+        .map(s=>`<option${s===p.slope?' selected':''}>${s}</option>`).join('')}
+    </select>
+    <div style="font-size:10px;color:var(--muted)">BAL: <strong style="color:${balColor(p.bal)}">${p.bal}</strong> — ${(BAL_INFO[p.bal]||{}).label||''}</div>`;
+    c.appendChild(d);
+  });
+  document.getElementById('balp').classList.add('vis');
+};
+document.getElementById('balp-apply').onclick=()=>{
+  S.plots.forEach(p=>{
+    const vi=document.getElementById('bv-'+p.id);
+    const si=document.getElementById('bs-'+p.id);
+    if(vi) p.vegcat=vi.value;
+    if(si) p.slope=si.value;
+  });
+  renderPlots();document.getElementById('balp').classList.remove('vis');notify('Classifications updated','ok');
+};
+document.getElementById('balp-close').onclick=()=>document.getElementById('balp').classList.remove('vis');
+
+// ================================================================
+// ADDRESS SEARCH  (Photon primary, Nominatim fallback)
+// ================================================================
+async function searchAddr(){
+  const q=document.getElementById('addr').value.trim();
+  if(!q) return;
+  const cm=q.match(/^(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)$/);
+  if(cm){
+    map.setView([+cm[1],+cm[2]],17);
+    L.marker([+cm[1],+cm[2]]).addTo(map)
+      .bindPopup('<b>'+cm[1]+', '+cm[2]+'</b>').openPopup();
+    notify('Jumped to coordinates','ok');return;
+  }
+  notify('Searching…','inf');
+  let res=[];
+  try{
+    const r=await fetch('https://photon.komoot.io/api/?q='+encodeURIComponent(q)+'&limit=5&lang=en');
+    if(r.ok){
+      const g=await r.json();
+      if(g&&g.features&&g.features.length)
+        res=g.features.map(f=>({
+          lat:f.geometry.coordinates[1],lon:f.geometry.coordinates[0],
+          display_name:[f.properties.name,f.properties.street,f.properties.city,
+            f.properties.state,f.properties.country].filter(Boolean).join(', ')
+        }));
+    }
+  }catch(e){}
+  if(!res.length){
+    try{
+      const r2=await fetch('https://nominatim.openstreetmap.org/search?format=json&q='+encodeURIComponent(q)+'&limit=5');
+      if(r2.ok){const d=await r2.json();if(d&&d.length)res=d;}
+    }catch(e2){}
+  }
+  if(!res.length){notify('Address not found. Try more detail, or enter lat, lng directly.','err');return;}
+  const b=res[0];S.lastAddr=b.display_name;
+  map.setView([+b.lat,+b.lon],17);
+  L.marker([+b.lat,+b.lon]).addTo(map)
+    .bindPopup('<b style="font-size:11px">'+b.display_name.substring(0,100)+'</b>').openPopup();
+  notify('Located: '+b.display_name.substring(0,60),'ok');
+}
+document.getElementById('gobtn').onclick=searchAddr;
+document.getElementById('addr').onkeydown=e=>{if(e.key==='Enter')searchAddr();};
+
+// ================================================================
+// PHOTOS
+// ================================================================
+const pdz=document.getElementById('pdz');
+pdz.onclick=()=>document.getElementById('ph-file').click();
+pdz.ondragover=e=>{e.preventDefault();pdz.classList.add('ov');};
+pdz.ondragleave=()=>pdz.classList.remove('ov');
+pdz.ondrop=e=>{e.preventDefault();pdz.classList.remove('ov');handlePhotos(Array.from(e.dataTransfer.files));};
+document.getElementById('ph-file').onchange=e=>{handlePhotos(Array.from(e.target.files));e.target.value='';};
+
+document.getElementById('map').addEventListener('dragover',e=>e.preventDefault());
+document.getElementById('map').addEventListener('drop',async e=>{
+  e.preventDefault();
+  const files=Array.from(e.dataTransfer.files).filter(f=>f.type.startsWith('image/'));
+  if(!files.length) return;
+  const rect=map.getContainer().getBoundingClientRect();
+  const dropLL=map.containerPointToLatLng([e.clientX-rect.left,e.clientY-rect.top]);
+  for(const f of files) await placePhoto(f,dropLL,true);
+});
+
+async function handlePhotos(files){
+  for(const f of files) if(f.type.startsWith('image/')) await placePhoto(f,null,false);
+}
+
+async function placePhoto(file,fallback,isMapDrop){
+  const url=URL.createObjectURL(file);
+  let lat=null,lng=null,bearing=null;
+  try{
+    const ex=await exifr.parse(file,{gps:true,tiff:true,exif:true});
+    if(ex){
+      if(ex.latitude) lat=ex.latitude;
+      if(ex.longitude) lng=ex.longitude;
+      if(ex.GPSImgDirection) bearing=ex.GPSImgDirection;
+    }
+  }catch(e){}
+  if(!lat||!lng){
+    if(fallback){lat=fallback.lat;lng=fallback.lng;}
+    else{const c=map.getCenter();lat=c.lat+(Math.random()-.5)*.001;lng=c.lng+(Math.random()-.5)*.001;}
+    if(!isMapDrop) notify('No GPS in photo — placed at map centre','inf');
+  }
+  const ph={id:Date.now()+Math.random(),url,lat,lng,bearing,name:file.name};
+  S.photos.push(ph);
+  const arrow=bearing!==null
+    ?'<div style="position:absolute;top:-20px;left:50%;transform:translateX(-50%) rotate('+bearing+'deg);font-size:16px;color:#f0a500;text-shadow:0 0 3px #000;pointer-events:none">↑</div>':'' ;
+  const icon=L.divIcon({className:'',
+    html:'<div style="position:relative;width:28px;height:28px">'+arrow+'<div style="width:28px;height:28px;background:#181c24;border:2px solid #f0a500;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px">📷</div></div>',
+    iconSize:[28,28],iconAnchor:[14,14]});
+  const m=L.marker([lat,lng],{icon,draggable:true}).addTo(gPh);
+  m.bindPopup('<div class="phpu"><img src="'+url+'"><p>'+file.name+'</p><p>GPS: '+lat.toFixed(6)+', '+lng.toFixed(6)+'</p>'+(bearing!==null?'<p>Direction: '+bearing.toFixed(1)+'°</p>':'')+'</div>',{maxWidth:230});
+  m.on('dragend',ev=>{const ll=ev.target.getLatLng();ph.lat=ll.lat;ph.lng=ll.lng;});
+  ph.marker=m;
+  renderPhotos();
+  document.getElementById('st-ph').textContent=S.photos.length;
+  notify('Photo placed: '+file.name.substring(0,30)+(bearing!==null?' · '+bearing.toFixed(0)+'°':''),'ok');
+}
+
+function renderPhotos(){
+  const el=document.getElementById('phl');el.innerHTML='';
+  S.photos.forEach(p=>{
+    const img=document.createElement('img');
+    img.src=p.url;img.className='pth';img.title=p.name;
+    img.onclick=()=>{map.setView([p.lat,p.lng],18);p.marker.openPopup();};
+    el.appendChild(img);
+  });
+}
+
+// ================================================================
+// SAVE / LOAD
+// ================================================================
+document.getElementById('tb-sav').onclick=()=>document.getElementById('iom').classList.add('vis');
+document.getElementById('io-cls').onclick=()=>document.getElementById('iom').classList.remove('vis');
+
+document.getElementById('io-exp').onclick=()=>{
+  const data={
+    version:1,
+    addr:S.lastAddr,
+    building:S.buildingLayer?S.buildingLayer.getLatLngs()[0].map(p=>({lat:p.lat,lng:p.lng})):null,
+    plots:S.plots.map(p=>({
+      id:p.id,name:p.name,vegcat:p.vegcat,vegsub:p.vegsub,slope:p.slope,
+      notes:p.notes,color:p.color,dist:p.dist,bal:p.bal,
+      pts:p.layer.getLatLngs()[0].map(x=>({lat:x.lat,lng:x.lng}))
+    })),
+    photos:S.photos.map(p=>({lat:p.lat,lng:p.lng,name:p.name,bearing:p.bearing})),
+  };
+  document.getElementById('iotxt').value=btoa(JSON.stringify(data));
+  notify('Project exported to text box','ok');
+};
+
+document.getElementById('io-cpy').onclick=()=>{
+  const txt=document.getElementById('iotxt').value;
+  if(!txt){notify('Export first','err');return;}
+  navigator.clipboard.writeText(txt).then(()=>notify('Copied to clipboard','ok')).catch(()=>notify('Copy failed — select text manually','err'));
+};
+
+document.getElementById('io-imp').onclick=()=>{
+  const txt=document.getElementById('iotxt').value.trim();
+  if(!txt){notify('Paste a saved string first','err');return;}
+  try{
+    const data=JSON.parse(atob(txt));
+    [gBld,gBuf,gPlt,gPh,gDrw,gMsr,gPln,gSnp,gEdt,gDist].forEach(g=>g.clearLayers());
+    Object.assign(S,{buildingLayer:null,buf50:null,buf100:null,plots:[],photos:[],
+      drawPts:[],plotPts:[],msrPts:[],vertHandles:[]});
+
+    if(data.building){
+      S.buildingLayer=L.polygon(data.building,
+        {color:'#ff6b35',weight:2.5,fillColor:'#ff6b35',fillOpacity:.15}).addTo(gBld);
+      S.buildingLayer.bindTooltip('Building Envelope');
+      document.getElementById('st-bld').textContent=data.building.length+' pts';
+    }
+    (data.plots||[]).forEach(p=>{
+      const layer=L.polygon(p.pts,{color:p.color,weight:2,fillColor:p.color,fillOpacity:.28}).addTo(gPlt);
+      layer.bindTooltip(p.name);
+      const plot={...p,layer,dist:p.dist,bal:p.bal};
+      S.plots.push(plot);
+      layer.on('click',()=>selectPlot(plot.id));
+    });
+    (data.photos||[]).forEach(p=>{
+      const ph={...p,id:Date.now()+Math.random(),url:null,marker:null};
+      S.photos.push(ph);
+      const icon=L.divIcon({className:'',
+        html:'<div style="width:28px;height:28px;background:#181c24;border:2px solid #888;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px">📷</div>',
+        iconSize:[28,28],iconAnchor:[14,14]});
+      ph.marker=L.marker([p.lat,p.lng],{icon,draggable:true}).addTo(gPh)
+        .bindPopup('<div class="phpu"><p>'+p.name+'</p><p>GPS: '+p.lat.toFixed(6)+', '+p.lng.toFixed(6)+'</p></div>');
+    });
+    if(data.addr) S.lastAddr=data.addr;
+    drawBuffers();renderPlots();renderPhotos();
+    updateBuildingCard();
+    document.getElementById('st-plt').textContent=S.plots.length;
+    document.getElementById('plt-count').textContent=S.plots.length+' plot'+(S.plots.length!==1?'s':'');
+    document.getElementById('st-ph').textContent=S.photos.length;
+    document.getElementById('iom').classList.remove('vis');
+    notify('Project loaded successfully','ok');
+  }catch(e){notify('Import failed: '+e.message,'err');}
+};
+
+// ================================================================
+// CSV EXPORT
+// ================================================================
+document.getElementById('tb-rpt').ondblclick=()=>{
+  if(!S.plots.length){notify('No plots','err');return;}
+  let csv='Plot Name,Veg Category,Sub-type,Slope,Distance (m),BAL,BAL Level,Notes\n';
+  S.plots.forEach(p=>csv+=`"${p.name}","${p.vegcat||''}","${p.vegsub||''}","${p.slope||''}","${p.dist!==null?p.dist.toFixed(2):''}","${p.bal||''}","${(BAL_INFO[p.bal]||{}).label||''}","${p.notes||''}"\n`);
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download='BAL-plots.csv';a.click();
+  notify('CSV exported','ok');
+};
+
+// ================================================================
+// WORD REPORT
+// ================================================================
+document.getElementById('tb-rpt').onclick=async()=>{
+  notify('Generating report…','inf');
+  try{
+    if(!window.docx){
+      await new Promise((res,rej)=>{
+        const s=document.createElement('script');
+        s.src='https://cdn.jsdelivr.net/npm/docx@9.0.2/build/index.js';
+        s.onload=res;s.onerror=rej;
+        document.head.appendChild(s);
+      });
+    }
+    const {Document,Packer,Paragraph,TextRun,Table,TableRow,TableCell,
+      HeadingLevel,AlignmentType,BorderStyle,WidthType,ShadingType,
+      Footer,PageNumberElement}=window.docx;
+
+    function bc(cls){return {'BAL-FZ':'C0392B','BAL-40':'E67E22','BAL-29':'F39C12','BAL-19':'CCAA00','BAL-12.5':'27AE60','BAL-LOW':'1E8449'}[cls]||'666666';}
+    const bd={style:BorderStyle.SINGLE,size:1,color:'CCCCCC'};
+    const bds={top:bd,bottom:bd,left:bd,right:bd};
+    const hd={style:BorderStyle.SINGLE,size:1,color:'2E5FA3'};
+    const hds={top:hd,bottom:hd,left:hd,right:hd};
+    const now=new Date().toLocaleDateString('en-AU',{year:'numeric',month:'long',day:'numeric'});
+    const marg={top:80,bottom:80,left:120,right:120};
+
+    function tc(text,bold,shade,color,w){
+      return new TableCell({borders:bds,width:{size:w||1500,type:WidthType.DXA},
+        shading:shade?{fill:shade,type:ShadingType.CLEAR}:undefined,margins:marg,
+        children:[new Paragraph({children:[new TextRun({text:String(text||''),bold,font:'Arial',size:18,color:color||'000000'})]})]});
+    }
+    function hc(text,w){
+      return new TableCell({borders:hds,width:{size:w||1500,type:WidthType.DXA},
+        shading:{fill:'1E3A5F',type:ShadingType.CLEAR},margins:marg,
+        children:[new Paragraph({children:[new TextRun({text,bold:true,font:'Arial',size:18,color:'FFFFFF'})]})]});
+    }
+    function ir(label,value){
+      return new TableRow({children:[
+        new TableCell({borders:bds,width:{size:2706,type:WidthType.DXA},shading:{fill:'EAF0F8',type:ShadingType.CLEAR},margins:marg,children:[new Paragraph({children:[new TextRun({text:label,bold:true,font:'Arial',size:18})]})]}),
+        new TableCell({borders:bds,width:{size:6320,type:WidthType.DXA},margins:marg,children:[new Paragraph({children:[new TextRun({text:value,font:'Arial',size:18})]})]}),
+      ]});
+    }
+
+    const doc=new Document({
+      styles:{default:{document:{run:{font:'Arial',size:20}}}},
+      sections:[{
+        properties:{page:{size:{width:11906,height:16838},margin:{top:1440,right:1440,bottom:1440,left:1440}}},
+        footers:{default:new Footer({children:[new Paragraph({alignment:AlignmentType.CENTER,children:[
+          new TextRun({text:'BAL Assessment Report  |  Page ',font:'Arial',size:16,color:'888888'}),
+          new PageNumberElement(),
+          new TextRun({text:'  |  '+now,font:'Arial',size:16,color:'888888'}),
+        ]})]})},
+        children:[
+          new Paragraph({alignment:AlignmentType.CENTER,spacing:{before:0,after:120},children:[new TextRun({text:'BUSHFIRE ATTACK LEVEL (BAL)',font:'Arial',size:48,bold:true,color:'1E3A5F'})]}),
+          new Paragraph({alignment:AlignmentType.CENTER,spacing:{before:0,after:480},children:[new TextRun({text:'SITE ASSESSMENT REPORT',font:'Arial',size:28,color:'2E5FA3'})]}),
+          new Paragraph({heading:HeadingLevel.HEADING_1,children:[new TextRun('1. Site Information')]}),
+          new Table({width:{size:9026,type:WidthType.DXA},columnWidths:[2706,6320],rows:[
+            ir('Site Address',S.lastAddr||document.getElementById('addr').value||'Not specified'),
+            ir('Assessment Date',now),
+            ir('Building Envelope',S.buildingLayer?S.buildingLayer.getLatLngs()[0].length+' vertices':'Not defined'),
+            ir('Total Plots',String(S.plots.length)),
+            ir('Field Photos',S.photos.length+' photo(s)'),
+          ]}),
+          new Paragraph({spacing:{before:240}}),
+          new Paragraph({heading:HeadingLevel.HEADING_1,children:[new TextRun('2. BAL Classification Reference (AS 3959)')]}),
+          new Table({width:{size:9026,type:WidthType.DXA},columnWidths:[1600,1800,1400,4226],rows:[
+            new TableRow({children:[hc('BAL Rating',1600),hc('Risk Level',1800),hc('Distance',1400),hc('Description',4226)]}),
+            ...[['BAL-LOW','Very Low','>100m','Insignificant risk. No special construction required.'],
+                ['BAL-12.5','Low','60–100m','Primarily ember attack. Radiant heat ≤12.5 kW/m².'],
+                ['BAL-19','Moderate','40–60m','Ember attack and low-level radiant heat (12.5–19 kW/m²).'],
+                ['BAL-29','High','20–40m','Significant ember attack and radiant heat (19–29 kW/m²).'],
+                ['BAL-40','Very High','10–20m','High radiant heat (29–40 kW/m²), potential flame contact.'],
+                ['BAL-FZ','Flame Zone','<10m','Extreme risk. Direct flame exposure, radiant heat >40 kW/m².'],
+            ].map(([cls,lvl,dist,desc],i)=>new TableRow({children:[
+              new TableCell({borders:bds,width:{size:1600,type:WidthType.DXA},shading:{fill:bc(cls),type:ShadingType.CLEAR},margins:marg,children:[new Paragraph({children:[new TextRun({text:cls,bold:true,color:'FFFFFF',font:'Arial',size:18})]})]}),
+              new TableCell({borders:bds,width:{size:1800,type:WidthType.DXA},shading:{fill:i%2?'FFFFFF':'F7F9FC',type:ShadingType.CLEAR},margins:marg,children:[new Paragraph({children:[new TextRun({text:lvl,font:'Arial',size:18})]})]}),
+              new TableCell({borders:bds,width:{size:1400,type:WidthType.DXA},shading:{fill:i%2?'FFFFFF':'F7F9FC',type:ShadingType.CLEAR},margins:marg,children:[new Paragraph({children:[new TextRun({text:dist,font:'Arial',size:18})]})]}),
+              new TableCell({borders:bds,width:{size:4226,type:WidthType.DXA},shading:{fill:i%2?'FFFFFF':'F7F9FC',type:ShadingType.CLEAR},margins:marg,children:[new Paragraph({children:[new TextRun({text:desc,font:'Arial',size:18})]})]}),
+            ]}))
+          ]}),
+          new Paragraph({spacing:{before:240}}),
+          new Paragraph({heading:HeadingLevel.HEADING_1,children:[new TextRun('3. Plot Assessment Results')]}),
+          !S.plots.length
+            ?new Paragraph({children:[new TextRun({text:'No plots defined.',font:'Arial',size:18,italics:true})]})
+            :new Table({width:{size:9026,type:WidthType.DXA},columnWidths:[1200,1400,1600,1300,1200,1126,1200],rows:[
+              new TableRow({children:['Plot','Veg Category','Sub-type','Slope','Distance','BAL','Notes'].map((h,i)=>hc(h,[1200,1400,1600,1300,1200,1126,1200][i]))}),
+              ...S.plots.map(p=>new TableRow({children:[
+                tc(p.name,true,null,null,1200),
+                tc(p.vegcat||'—',false,null,null,1400),
+                tc(p.vegsub||'—',false,null,null,1600),
+                tc(p.slope||'—',false,null,null,1300),
+                tc(p.dist!==null?p.dist.toFixed(1)+'m':'—',false,null,null,1200),
+                new TableCell({borders:bds,width:{size:1126,type:WidthType.DXA},shading:{fill:bc(p.bal),type:ShadingType.CLEAR},margins:marg,children:[new Paragraph({children:[new TextRun({text:p.bal||'—',bold:true,color:'FFFFFF',font:'Arial',size:18})]})]}),
+                tc(p.notes||'',false,null,null,1200),
+              ]}))
+            ]}),
+          new Paragraph({spacing:{before:240}}),
+          new Paragraph({heading:HeadingLevel.HEADING_1,children:[new TextRun('4. Disclaimer')]}),
+          new Paragraph({children:[new TextRun({text:'This report is a preliminary desktop assessment only. BAL classifications are indicative, based on straight-line distances. A formal BAL assessment must be conducted by a suitably qualified professional in accordance with AS 3959:2018.',font:'Arial',size:18,italics:true,color:'666666'})]}),
+        ]
+      }]
+    });
+    const buf=await Packer.toBuffer(doc);
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'}));
+    a.download='BAL-Assessment-Report.docx';a.click();
+    notify('Report downloaded!','ok');
+  }catch(err){console.error(err);notify('Report error: '+err.message,'err');}
+};
+
+// ================================================================
+// INIT
+// ================================================================
+renderPlots();
+notify('BAL Assessment Tool ready — search an address to begin','ok');
+</script>
+</body>
+</html>
