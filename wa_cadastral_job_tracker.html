@@ -1,0 +1,646 @@
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+#app{display:flex;flex-direction:column;height:700px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);overflow:hidden;background:var(--color-background-primary)}
+#topbar{background:#1a2e4a;color:#fff;padding:8px 14px;display:flex;align-items:center;gap:10px;flex-shrink:0}
+#topbar .title{font-size:14px;font-weight:500;flex:1}
+#topbar .subtitle{font-size:11px;opacity:.6}
+.tb-btn{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);color:#fff;padding:5px 11px;border-radius:6px;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:5px;white-space:nowrap}
+.tb-btn:hover{background:rgba(255,255,255,.25)}
+.tb-btn.active{background:#1a7a5e;border-color:#1a7a5e}
+#body{display:flex;flex:1;overflow:hidden}
+#sidebar{width:280px;flex-shrink:0;background:var(--color-background-primary);border-right:0.5px solid var(--color-border-tertiary);display:flex;flex-direction:column;overflow:hidden;transition:width .2s}
+#sidebar.collapsed{width:0}
+#sb-inner{width:280px;display:flex;flex-direction:column;height:100%;overflow:hidden}
+#map-wrap{flex:1;position:relative;min-width:0}
+#map{width:100%;height:100%}
+.tab-bar{display:flex;border-bottom:0.5px solid var(--color-border-tertiary);flex-shrink:0}
+.stab{flex:1;padding:8px 4px;font-size:12px;text-align:center;cursor:pointer;color:var(--color-text-secondary);border-bottom:2px solid transparent}
+.stab.on{color:#1a2e4a;font-weight:500;border-bottom-color:#1a2e4a}
+.tab-pane{display:none;overflow-y:auto;flex:1;padding:10px 12px}
+.tab-pane.on{display:block}
+.sec-hdr{display:flex;align-items:center;gap:7px;padding:7px 0;cursor:pointer;user-select:none}
+.sec-hdr .lbl{font-size:12px;font-weight:500;color:var(--color-text-primary);flex:1}
+.sec-hdr .cnt{font-size:11px;background:var(--color-background-secondary);color:var(--color-text-secondary);padding:1px 6px;border-radius:8px}
+.sec-body{margin-bottom:8px}
+.lrow{display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:0.5px solid var(--color-border-tertiary)}
+.lrow:last-child{border-bottom:none}
+.ldot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.llbl{font-size:12px;color:var(--color-text-primary);flex:1}
+.lsub{font-size:10px;color:var(--color-text-secondary)}
+.sw{position:relative;width:30px;height:16px;flex-shrink:0}
+.sw input{opacity:0;width:0;height:0}
+.sw-sl{position:absolute;inset:0;background:#ccc;border-radius:8px;cursor:pointer;transition:.2s}
+.sw-sl:before{content:'';position:absolute;width:11px;height:11px;left:2.5px;top:2.5px;background:#fff;border-radius:50%;transition:.2s}
+input:checked+.sw-sl{background:#1a7a5e}
+input:checked+.sw-sl:before{transform:translateX(13px)}
+.fg{margin-bottom:10px}
+.fg label{font-size:11px;color:var(--color-text-secondary);display:block;margin-bottom:3px;text-transform:uppercase;letter-spacing:.04em}
+.fg input,.fg select{width:100%;padding:6px 8px;border:0.5px solid var(--color-border-secondary);border-radius:6px;font-size:12px;background:var(--color-background-primary);color:var(--color-text-primary)}
+.fg input:focus,.fg select:focus{outline:none;border-color:#1a7a5e}
+.btn{display:inline-flex;align-items:center;gap:5px;padding:6px 11px;border-radius:6px;font-size:12px;cursor:pointer;border:0.5px solid var(--color-border-secondary);background:var(--color-background-primary);color:var(--color-text-primary)}
+.btn:hover{background:var(--color-background-secondary)}
+.btn.go{background:#1a7a5e;color:#fff;border-color:#1a7a5e}
+.btn.go:hover{background:#15624c}
+.btn.navy{background:#1a2e4a;color:#fff;border-color:#1a2e4a}
+.btn.del{color:#c0392b;border-color:rgba(192,57,43,.3)}
+.btn.del:hover{background:#fdf0ef}
+.brow{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.sc{background:var(--color-background-secondary);border-radius:8px;padding:10px;text-align:center}
+.sc .v{font-size:20px;font-weight:500;color:#1a2e4a}
+.sc .l{font-size:11px;color:var(--color-text-secondary);margin-top:2px}
+.stat-g{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.bar-wrap{margin-bottom:8px}
+.bar-row{display:flex;align-items:center;gap:6px;margin-bottom:4px}
+.bar-lbl{font-size:11px;color:var(--color-text-secondary);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar-val{font-size:11px;font-weight:500;color:var(--color-text-primary);width:20px;text-align:right}
+.bar-track{height:7px;background:var(--color-background-secondary);border-radius:3px;flex:2}
+.bar-fill{height:7px;border-radius:3px}
+.lot-item{display:flex;align-items:center;gap:7px;padding:5px 0;border-bottom:0.5px solid var(--color-border-tertiary);cursor:pointer;font-size:12px}
+.lot-item:hover{background:var(--color-background-secondary)}
+.lot-item:last-child{border-bottom:none}
+.badge{padding:2px 6px;border-radius:4px;font-size:10px;font-weight:500}
+.badge.completed{background:#d4efdf;color:#0f5e34}
+.badge.inprogress{background:#d6eaf8;color:#0c447c}
+.badge.pending{background:#fdebd0;color:#784212}
+.empty{text-align:center;padding:16px;font-size:12px;color:var(--color-text-secondary)}
+.sb-toggle{position:absolute;left:0;top:50%;transform:translateY(-50%);z-index:800;background:#1a2e4a;color:#fff;border:none;width:18px;height:36px;border-radius:0 5px 5px 0;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center}
+.map-legend{position:absolute;bottom:20px;right:8px;background:rgba(255,255,255,.96);border-radius:8px;padding:8px 12px;z-index:500;font-size:11px;border:0.5px solid #ddd}
+.leg-row{display:flex;align-items:center;gap:6px;margin:3px 0;color:#333}
+.srch-box{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:800;width:340px;max-width:90%}
+.srch-input-wrap{display:flex;background:#fff;border-radius:8px;border:0.5px solid #ddd;overflow:hidden}
+.srch-input-wrap input{flex:1;padding:8px 12px;border:none;font-size:13px;outline:none;color:#222}
+.srch-input-wrap button{padding:0 12px;background:#1a2e4a;border:none;color:#fff;cursor:pointer;font-size:16px}
+.srch-results{background:#fff;border:0.5px solid #ddd;border-radius:0 0 8px 8px;max-height:180px;overflow-y:auto;margin-top:1px}
+.srch-r{padding:8px 12px;font-size:12px;cursor:pointer;border-bottom:0.5px solid #eee;color:#222}
+.srch-r:hover{background:#f4f2ed}
+.srch-r:last-child{border-bottom:none}
+.map-chips{position:absolute;top:10px;left:10px;z-index:800;display:flex;flex-direction:column;gap:4px}
+.chip{background:rgba(255,255,255,.96);border:0.5px solid #ddd;border-radius:16px;padding:4px 10px;font-size:11px;font-weight:500;color:#1a2e4a;pointer-events:none}
+.chip.active{background:#1a7a5e;color:#fff;border-color:#1a7a5e}
+.modal-bg{position:absolute;inset:0;background:rgba(0,0,0,.45);z-index:2000;display:none;align-items:flex-start;justify-content:center;padding-top:40px}
+.modal-bg.on{display:flex}
+.modal{background:var(--color-background-primary);border-radius:10px;width:420px;max-height:580px;overflow-y:auto;padding:18px}
+.modal h2{font-size:15px;font-weight:500;color:#1a2e4a;margin-bottom:14px}
+.sel-lot-banner{background:#e8f4fd;border:1px solid #aed6f1;border-radius:6px;padding:8px 10px;font-size:12px;color:#1a5276;margin-bottom:12px;display:flex;align-items:center;gap:6px}
+.entity-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:0.5px solid var(--color-border-tertiary);font-size:12px}
+.entity-row:last-child{border-bottom:none}
+.av{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:500;flex-shrink:0}
+.notif{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);background:#1a2e4a;color:#fff;padding:8px 16px;border-radius:20px;font-size:12px;z-index:3000;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap}
+.notif.on{opacity:1}
+.picking-mode #map{cursor:crosshair!important}
+.picking-banner{position:absolute;top:54px;left:50%;transform:translateX(-50%);z-index:810;background:#e8a020;color:#fff;border-radius:20px;padding:6px 14px;font-size:12px;font-weight:500;display:none;align-items:center;gap:6px;white-space:nowrap}
+.picking-banner.on{display:flex}
+</style>
+
+<div id="app">
+  <div id="topbar">
+    <i class="ti ti-map-2" style="font-size:18px" aria-hidden="true"></i>
+    <div style="flex:1"><div class="title">WA Cadastral Job Tracker</div><div class="subtitle">Landgate WMS · Builders & Developers</div></div>
+    <button class="tb-btn" id="btn-pick-mode" onclick="togglePickMode()"><i class="ti ti-map-pin" aria-hidden="true"></i> Select lot on map</button>
+    <button class="tb-btn" onclick="openAddModal(null)"><i class="ti ti-plus" aria-hidden="true"></i> Add job</button>
+    <button class="tb-btn" onclick="openManage()"><i class="ti ti-settings" aria-hidden="true"></i> Manage</button>
+  </div>
+
+  <div id="body">
+    <div id="sidebar">
+      <div id="sb-inner">
+        <div class="tab-bar">
+          <div class="stab on" onclick="stab('layers',this)">Layers</div>
+          <div class="stab" onclick="stab('filter',this)">Filter</div>
+          <div class="stab" onclick="stab('stats',this)">Statistics</div>
+        </div>
+
+        <div class="tab-pane on" id="tp-layers">
+          <div class="sec-hdr" onclick="toggleSec(this)">
+            <i class="ti ti-stack-2" style="font-size:14px;color:#1a7a5e" aria-hidden="true"></i>
+            <span class="lbl">Map layers</span>
+            <i class="ti ti-chevron-down" style="font-size:14px;color:var(--color-text-secondary)" aria-hidden="true"></i>
+          </div>
+          <div class="sec-body">
+            <div class="lrow"><div class="ldot" style="background:#1a7a5e"></div><div style="flex:1"><div class="llbl">Cadastral lots</div><div class="lsub">Landgate WMS boundaries</div></div><label class="sw"><input type="checkbox" id="tog-cad" checked onchange="toggleWMS('cad',this)"><span class="sw-sl"></span></label></div>
+            <div class="lrow"><div class="ldot" style="background:#2980b9"></div><div style="flex:1"><div class="llbl">Completed</div><div class="lsub">Jobs finished</div></div><label class="sw"><input type="checkbox" id="tog-completed" checked onchange="toggleStatus('completed',this)"><span class="sw-sl"></span></label></div>
+            <div class="lrow"><div class="ldot" style="background:#e67e22"></div><div style="flex:1"><div class="llbl">In progress</div><div class="lsub">Active jobs</div></div><label class="sw"><input type="checkbox" id="tog-inprogress" checked onchange="toggleStatus('inprogress',this)"><span class="sw-sl"></span></label></div>
+            <div class="lrow"><div class="ldot" style="background:#c0392b"></div><div style="flex:1"><div class="llbl">Pending</div><div class="lsub">Not started</div></div><label class="sw"><input type="checkbox" id="tog-pending" checked onchange="toggleStatus('pending',this)"><span class="sw-sl"></span></label></div>
+            <div class="lrow"><div class="ldot" style="background:#6c5ce7;outline:1px solid #6c5ce7"></div><div style="flex:1"><div class="llbl">Suburb boundaries</div><div class="lsub">WA suburbs WMS</div></div><label class="sw"><input type="checkbox" id="tog-sub" onchange="toggleWMS('sub',this)"><span class="sw-sl"></span></label></div>
+          </div>
+
+          <div class="sec-hdr" onclick="toggleSec(this)">
+            <i class="ti ti-building-community" style="font-size:14px;color:#2980b9" aria-hidden="true"></i>
+            <span class="lbl">Builders</span>
+            <span class="cnt" id="b-cnt">0</span>
+            <i class="ti ti-chevron-down" style="font-size:14px;color:var(--color-text-secondary)" aria-hidden="true"></i>
+          </div>
+          <div class="sec-body" id="builder-layers"></div>
+
+          <div class="sec-hdr" onclick="toggleSec(this)">
+            <i class="ti ti-home-2" style="font-size:14px;color:#1a7a5e" aria-hidden="true"></i>
+            <span class="lbl">Developers</span>
+            <span class="cnt" id="d-cnt">0</span>
+            <i class="ti ti-chevron-down" style="font-size:14px;color:var(--color-text-secondary)" aria-hidden="true"></i>
+          </div>
+          <div class="sec-body" id="developer-layers"></div>
+        </div>
+
+        <div class="tab-pane" id="tp-filter">
+          <div class="fg"><label>Search address / suburb</label><input type="text" id="f-q" placeholder="Type anything…" oninput="applyFilter()"></div>
+          <div class="fg"><label>Builder</label><select id="f-builder" onchange="applyFilter()"><option value="">All builders</option></select></div>
+          <div class="fg"><label>Developer</label><select id="f-developer" onchange="applyFilter()"><option value="">All developers</option></select></div>
+          <div class="fg"><label>Status</label><select id="f-status" onchange="applyFilter()"><option value="">All</option><option value="completed">Completed</option><option value="inprogress">In progress</option><option value="pending">Pending</option></select></div>
+          <div class="brow">
+            <button class="btn go" onclick="applyFilter()"><i class="ti ti-filter" aria-hidden="true"></i> Apply</button>
+            <button class="btn" onclick="clearFilter()"><i class="ti ti-x" aria-hidden="true"></i> Clear</button>
+          </div>
+          <div id="filter-count" style="font-size:12px;color:#1a7a5e;font-weight:500;margin-top:10px"></div>
+          <div id="filter-list" style="margin-top:6px"></div>
+        </div>
+
+        <div class="tab-pane" id="tp-stats">
+          <div class="stat-g" id="stat-cards"></div>
+          <div style="font-size:11px;font-weight:500;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">By builder</div>
+          <div class="bar-wrap" id="b-chart"></div>
+          <div style="font-size:11px;font-weight:500;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;margin-top:10px">By developer</div>
+          <div class="bar-wrap" id="d-chart"></div>
+          <div style="font-size:11px;font-weight:500;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;margin-top:10px">Top suburbs</div>
+          <div class="bar-wrap" id="s-chart"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="map-wrap">
+      <button class="sb-toggle" id="sb-tog" onclick="toggleSidebar()" aria-label="Toggle sidebar">
+        <i class="ti ti-chevron-left" id="sb-ico" aria-hidden="true"></i>
+      </button>
+
+      <div class="map-chips">
+        <div class="chip" id="chip-total">0 jobs</div>
+        <div class="chip active" id="chip-filter" style="display:none">Filtered view</div>
+      </div>
+
+      <div class="srch-box">
+        <div class="srch-input-wrap">
+          <input type="text" id="srch-input" placeholder="Search address, suburb or lot number…" oninput="doSearch()" onkeydown="if(event.key==='Escape')clearSearch()">
+          <button onclick="doSearch()" aria-label="Search"><i class="ti ti-search" aria-hidden="true"></i></button>
+        </div>
+        <div class="srch-results" id="srch-results" style="display:none"></div>
+      </div>
+
+      <div class="picking-banner" id="pick-banner">
+        <i class="ti ti-hand-click" aria-hidden="true"></i> Click a location on the map to place your job
+        <button onclick="togglePickMode()" style="margin-left:8px;background:rgba(255,255,255,.3);border:none;color:#fff;padding:2px 8px;border-radius:10px;cursor:pointer;font-size:11px">Cancel</button>
+      </div>
+
+      <div id="map"></div>
+
+      <div class="map-legend">
+        <div style="font-size:10px;font-weight:500;color:#555;margin-bottom:4px">Status</div>
+        <div class="leg-row"><div class="ldot" style="width:8px;height:8px;border-radius:50%;background:#2980b9"></div>Completed</div>
+        <div class="leg-row"><div class="ldot" style="width:8px;height:8px;border-radius:50%;background:#e67e22"></div>In progress</div>
+        <div class="leg-row"><div class="ldot" style="width:8px;height:8px;border-radius:50%;background:#c0392b"></div>Pending</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="add-modal">
+  <div class="modal">
+    <h2 id="modal-title"><i class="ti ti-map-pin" style="margin-right:6px" aria-hidden="true"></i>Add job</h2>
+    <div class="sel-lot-banner" id="lot-banner" style="display:none">
+      <i class="ti ti-map-2" aria-hidden="true"></i>
+      <span id="lot-banner-txt">Location selected from map</span>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <div class="fg" style="grid-column:1/-1"><label>Address *</label><input type="text" id="n-addr" placeholder="e.g. 14 Smith St, Baldivis"></div>
+      <div class="fg"><label>Suburb *</label><input type="text" id="n-suburb" placeholder="Suburb"></div>
+      <div class="fg"><label>Lot no.</label><input type="text" id="n-lot" placeholder="e.g. 42"></div>
+      <div class="fg"><label>Latitude *</label><input type="number" id="n-lat" step="0.00001" placeholder="-32.0"></div>
+      <div class="fg"><label>Longitude *</label><input type="number" id="n-lng" step="0.00001" placeholder="115.8"></div>
+      <div class="fg"><label>Builder</label><select id="n-builder"><option value="">— none —</option></select></div>
+      <div class="fg"><label>Developer</label><select id="n-developer"><option value="">— none —</option></select></div>
+      <div class="fg"><label>Status</label><select id="n-status"><option value="completed">Completed</option><option value="inprogress">In progress</option><option value="pending">Pending</option></select></div>
+      <div class="fg"><label>Date</label><input type="date" id="n-date"></div>
+      <div class="fg" style="grid-column:1/-1"><label>Notes</label><input type="text" id="n-notes" placeholder="Optional notes…"></div>
+    </div>
+    <div class="brow">
+      <button class="btn go" onclick="saveJob()"><i class="ti ti-check" aria-hidden="true"></i> Save job</button>
+      <button class="btn" onclick="closeModal('add-modal')">Cancel</button>
+      <button class="btn del" id="del-btn" onclick="deleteJob()" style="display:none"><i class="ti ti-trash" aria-hidden="true"></i> Delete</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="manage-modal">
+  <div class="modal" style="width:440px">
+    <h2><i class="ti ti-settings" style="margin-right:6px" aria-hidden="true"></i>Manage builders & developers</h2>
+    <div class="tab-bar" style="margin:-4px -18px 14px;border-radius:0">
+      <div class="stab on" onclick="mtab('builders',this)" id="mt-builders">Builders</div>
+      <div class="stab" onclick="mtab('developers',this)" id="mt-developers">Developers</div>
+    </div>
+    <div id="m-builders">
+      <div style="display:flex;gap:6px;margin-bottom:10px">
+        <input type="text" id="new-b" placeholder="Builder name…" style="flex:1;padding:7px 9px;border:0.5px solid var(--color-border-secondary);border-radius:6px;font-size:12px;background:var(--color-background-primary);color:var(--color-text-primary)">
+        <button class="btn go" onclick="addEntity('builder')"><i class="ti ti-plus" aria-hidden="true"></i> Add</button>
+      </div>
+      <div id="m-b-list"></div>
+    </div>
+    <div id="m-developers" style="display:none">
+      <div style="display:flex;gap:6px;margin-bottom:10px">
+        <input type="text" id="new-d" placeholder="Developer name…" style="flex:1;padding:7px 9px;border:0.5px solid var(--color-border-secondary);border-radius:6px;font-size:12px;background:var(--color-background-primary);color:var(--color-text-primary)">
+        <button class="btn go" onclick="addEntity('developer')"><i class="ti ti-plus" aria-hidden="true"></i> Add</button>
+      </div>
+      <div id="m-d-list"></div>
+    </div>
+    <div class="brow" style="margin-top:14px;border-top:0.5px solid var(--color-border-tertiary);padding-top:12px">
+      <button class="btn navy" onclick="closeModal('manage-modal')"><i class="ti ti-check" aria-hidden="true"></i> Done</button>
+    </div>
+  </div>
+</div>
+
+<div class="notif" id="notif"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+let S = {
+  jobs: [],
+  builders: [
+    {id:'b1',name:'BGC Group',color:'#2980b9'},
+    {id:'b2',name:'Dale Alcock Homes',color:'#8e44ad'},
+    {id:'b3',name:'Ventura Home Group',color:'#16a085'},
+    {id:'b4',name:'Summit Homes',color:'#d35400'}
+  ],
+  developers: [
+    {id:'d1',name:'Stockland',color:'#1a7a5e'},
+    {id:'d2',name:'Peet Limited',color:'#c0392b'},
+    {id:'d3',name:'Satterley Property Group',color:'#2471a3'},
+    {id:'d4',name:'LWP Property Group',color:'#784212'}
+  ],
+  vis: {completed:true,inprogress:true,pending:true},
+  editing: null,
+  picking: false
+};
+
+try {
+  const saved = localStorage.getItem('wa-ct-v2');
+  if (saved) { const p = JSON.parse(saved); S.jobs=p.jobs||[]; if(p.builders?.length) S.builders=p.builders; if(p.developers?.length) S.developers=p.developers; }
+} catch(e){}
+
+if (!S.jobs.length) S.jobs = [
+  {id:'j1',addr:'14 Springvale Loop',suburb:'Baldivis',lot:'42',lat:-32.3251,lng:115.8337,builder:'b1',developer:'d1',status:'completed',date:'2024-09-12',notes:'Slab inspection'},
+  {id:'j2',addr:'7 Rosette Loop',suburb:'Baldivis',lot:'17',lat:-32.3285,lng:115.8362,builder:'b2',developer:'d1',status:'completed',date:'2024-10-03',notes:''},
+  {id:'j3',addr:'31 Chadstone Blvd',suburb:'Ellenbrook',lot:'88',lat:-31.7715,lng:115.9982,builder:'b3',developer:'d2',status:'inprogress',date:'2025-01-15',notes:'Frame stage'},
+  {id:'j4',addr:'5 Amber Drive',suburb:'Ellenbrook',lot:'93',lat:-31.7698,lng:115.9940,builder:'b1',developer:'d2',status:'completed',date:'2025-02-20',notes:''},
+  {id:'j5',addr:'22 Ridgewood Blvd',suburb:'Ridgewood',lot:'205',lat:-31.6882,lng:115.7420,builder:'b4',developer:'d3',status:'pending',date:'2025-03-01',notes:''},
+  {id:'j6',addr:'9 Shorehaven Blvd',suburb:'Alkimos',lot:'310',lat:-31.6350,lng:115.7025,builder:'b2',developer:'d3',status:'completed',date:'2024-11-18',notes:''},
+  {id:'j7',addr:'44 Midfield Way',suburb:'Brabham',lot:'67',lat:-31.7850,lng:115.9650,builder:'b3',developer:'d4',status:'completed',date:'2024-12-05',notes:''},
+  {id:'j8',addr:'18 Settlers Blvd',suburb:'Brabham',lot:'72',lat:-31.7870,lng:115.9680,builder:'b1',developer:'d4',status:'inprogress',date:'2025-01-28',notes:''},
+  {id:'j9',addr:'6 Vasse Blvd',suburb:'Busselton',lot:'11',lat:-33.6530,lng:115.3440,builder:'b4',developer:'d1',status:'completed',date:'2024-08-14',notes:'South-west job'},
+  {id:'j10',addr:'3 Northam Rd',suburb:'Northam',lot:'5',lat:-31.6572,lng:116.6686,builder:'b2',developer:'d2',status:'pending',date:'2025-04-01',notes:'Wheatbelt'}
+];
+
+function persist() { try { localStorage.setItem('wa-ct-v2', JSON.stringify({jobs:S.jobs,builders:S.builders,developers:S.developers})); } catch(e){} }
+
+const map = L.map('map', {center:[-31.9505,115.8605], zoom:9, zoomControl:true});
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap | © Landgate WA',maxZoom:20}).addTo(map);
+
+const cadLayer = L.tileLayer.wms('https://services.slip.wa.gov.au/public/services/SLIP_Public_Services/Land/MapServer/WMSServer',{layers:'7',format:'image/png',transparent:true,version:'1.3.0',opacity:0.55});
+cadLayer.addTo(map);
+const subLayer = L.tileLayer.wms('https://services.slip.wa.gov.au/public/services/SLIP_Public_Services/Administrative_Boundaries/MapServer/WMSServer',{layers:'6',format:'image/png',transparent:true,version:'1.3.0',opacity:0.4});
+
+function toggleWMS(which, cb) {
+  const l = which==='cad'?cadLayer:subLayer;
+  if (cb.checked) map.addLayer(l); else map.removeLayer(l);
+}
+
+const statusCol = {completed:'#2980b9',inprogress:'#e67e22',pending:'#c0392b'};
+let markerMap = {};
+
+function mkIcon(status) {
+  const c = statusCol[status]||'#888';
+  return L.divIcon({html:`<div style="width:13px;height:13px;background:${c};border-radius:50%;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.4)"></div>`,className:'',iconSize:[17,17],iconAnchor:[8,8]});
+}
+
+function bName(id){ const b=S.builders.find(x=>x.id===id); return b?b.name:'—'; }
+function dName(id){ const d=S.developers.find(x=>x.id===id); return d?d.name:'—'; }
+
+function renderMarkers(jobs) {
+  Object.values(markerMap).forEach(m=>map.removeLayer(m));
+  markerMap={};
+  jobs.forEach(j=>{
+    if (!S.vis[j.status]) return;
+    const m = L.marker([j.lat,j.lng],{icon:mkIcon(j.status)});
+    m.bindPopup(`<div style="min-width:180px;font-family:system-ui,sans-serif">
+      <div style="font-size:13px;font-weight:500;color:#1a2e4a;margin-bottom:6px">${j.addr}</div>
+      <div style="font-size:11px;color:#555;margin:2px 0"><b style="color:#333">Suburb:</b> ${j.suburb}</div>
+      <div style="font-size:11px;color:#555;margin:2px 0"><b style="color:#333">Lot:</b> ${j.lot||'—'}</div>
+      <div style="font-size:11px;color:#555;margin:2px 0"><b style="color:#333">Builder:</b> ${bName(j.builder)}</div>
+      <div style="font-size:11px;color:#555;margin:2px 0"><b style="color:#333">Developer:</b> ${dName(j.developer)}</div>
+      <div style="font-size:11px;margin:2px 0"><b style="color:#333">Status:</b> <span style="color:${statusCol[j.status]};font-weight:500">${j.status}</span></div>
+      ${j.date?`<div style="font-size:11px;color:#555;margin:2px 0"><b style="color:#333">Date:</b> ${j.date}</div>`:''}
+      ${j.notes?`<div style="font-size:11px;color:#555;margin:4px 0;font-style:italic">${j.notes}</div>`:''}
+      <button onclick="openAddModal('${j.id}')" style="margin-top:8px;padding:4px 10px;background:#1a2e4a;color:#fff;border:none;border-radius:5px;font-size:11px;cursor:pointer">Edit job</button>
+    </div>`);
+    m.addTo(map);
+    markerMap[j.id]=m;
+  });
+  document.getElementById('chip-total').textContent = jobs.length+' job'+(jobs.length!==1?'s':'');
+}
+
+function toggleStatus(status,cb) {
+  S.vis[status]=cb.checked;
+  Object.entries(markerMap).forEach(([id,m])=>{
+    const j=S.jobs.find(x=>x.id===id);
+    if(!j)return;
+    if(j.status===status){ if(cb.checked) m.addTo(map); else map.removeLayer(m); }
+  });
+  persist();
+}
+
+function renderEntityLayers(type) {
+  const items = S[type+'s'];
+  document.getElementById((type==='builder'?'b':'d')+'-cnt').textContent=items.length;
+  const el = document.getElementById((type==='builder'?'builder':'developer')+'-layers');
+  if(!items.length){el.innerHTML='<div class="empty">None added yet</div>';return;}
+  el.innerHTML=items.map(e=>{
+    const cnt=S.jobs.filter(j=>j[type]===e.id).length;
+    return `<div class="lrow"><div class="ldot" style="background:${e.color}"></div><div style="flex:1"><div class="llbl">${e.name}</div><div class="lsub">${cnt} job${cnt!==1?'s':''}</div></div></div>`;
+  }).join('');
+}
+
+function populateSelects() {
+  [['n-builder','f-builder'],['n-developer','f-developer']].forEach(([a,b])=>{
+    [a,b].forEach(id=>{
+      const el=document.getElementById(id);
+      if(!el)return;
+      const v=el.value;
+      const isFilter=id.startsWith('f-');
+      const type=id.includes('builder')?'builders':'developers';
+      el.innerHTML=(isFilter?'<option value="">All</option>':'<option value="">— none —</option>')+S[type].map(x=>`<option value="${x.id}">${x.name}</option>`).join('');
+      el.value=v;
+    });
+  });
+}
+
+function renderStats() {
+  const j=S.jobs;
+  document.getElementById('stat-cards').innerHTML=`
+    <div class="sc"><div class="v">${j.length}</div><div class="l">Total jobs</div></div>
+    <div class="sc"><div class="v">${j.filter(x=>x.status==='completed').length}</div><div class="l">Completed</div></div>
+    <div class="sc"><div class="v">${j.filter(x=>x.status==='inprogress').length}</div><div class="l">In progress</div></div>
+    <div class="sc"><div class="v">${[...new Set(j.map(x=>x.suburb))].length}</div><div class="l">Suburbs</div></div>`;
+
+  function bars(items, getCount, getColor, elId) {
+    const el=document.getElementById(elId);
+    if(!items.length){el.innerHTML='<div class="empty">None yet</div>';return;}
+    const max=Math.max(...items.map(i=>getCount(i)),1);
+    el.innerHTML=items.map(i=>{
+      const c=getCount(i),pct=Math.round(c/max*100);
+      return `<div class="bar-row"><span class="bar-lbl">${i.name}</span><div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${getColor(i)}"></div></div><span class="bar-val">${c}</span></div>`;
+    }).join('');
+  }
+  bars(S.builders, b=>S.jobs.filter(j=>j.builder===b.id).length, b=>b.color, 'b-chart');
+  bars(S.developers, d=>S.jobs.filter(j=>j.developer===d.id).length, d=>d.color, 'd-chart');
+
+  const sc={};
+  S.jobs.forEach(j=>sc[j.suburb]=(sc[j.suburb]||0)+1);
+  const sorted=Object.entries(sc).sort((a,b)=>b[1]-a[1]).slice(0,7);
+  const maxS=sorted.length?sorted[0][1]:1;
+  document.getElementById('s-chart').innerHTML=sorted.map(([sub,cnt])=>`
+    <div class="bar-row"><span class="bar-lbl">${sub}</span><div class="bar-track"><div class="bar-fill" style="width:${Math.round(cnt/maxS*100)}%;background:#1a2e4a"></div></div><span class="bar-val">${cnt}</span></div>`).join('');
+}
+
+function fullRefresh() {
+  renderMarkers(S.jobs);
+  renderEntityLayers('builder');
+  renderEntityLayers('developer');
+  populateSelects();
+  renderStats();
+}
+
+let searchTimeout;
+function doSearch() {
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(()=>{
+    const q = document.getElementById('srch-input').value.trim();
+    const res = document.getElementById('srch-results');
+    if (q.length < 2) { res.style.display='none'; return; }
+
+    const hits = S.jobs.filter(j=>
+      j.addr.toLowerCase().includes(q.toLowerCase()) ||
+      j.suburb.toLowerCase().includes(q.toLowerCase()) ||
+      (j.lot && j.lot.toLowerCase().includes(q.toLowerCase()))
+    );
+
+    if (hits.length) {
+      res.style.display='block';
+      res.innerHTML = hits.slice(0,8).map(j=>`
+        <div class="srch-r" onclick="flyTo(${j.lat},${j.lng},'${j.id}')">
+          <div style="font-weight:500">${j.addr}</div>
+          <div style="color:#888;font-size:11px">${j.suburb} · Lot ${j.lot||'—'} · <span style="color:${statusCol[j.status]}">${j.status}</span></div>
+        </div>`).join('');
+    } else {
+      res.style.display='block';
+      res.innerHTML='<div class="srch-r" style="color:#aaa">No matching jobs — try geocoding: <a href="https://nominatim.openstreetmap.org/search?q='+encodeURIComponent(q+',+Western+Australia')+'&format=json" target="_blank" style="color:#1a7a5e">search on map</a></div>';
+    }
+  }, 200);
+}
+
+function clearSearch() {
+  document.getElementById('srch-input').value='';
+  document.getElementById('srch-results').style.display='none';
+}
+
+function flyTo(lat,lng,id) {
+  clearSearch();
+  map.flyTo([lat,lng],16,{duration:1.2});
+  setTimeout(()=>{ const m=markerMap[id]; if(m) m.openPopup(); },1400);
+}
+
+function applyFilter() {
+  const q=(document.getElementById('f-q').value||'').toLowerCase();
+  const b=document.getElementById('f-builder').value;
+  const d=document.getElementById('f-developer').value;
+  const s=document.getElementById('f-status').value;
+  const active=q||b||d||s;
+  document.getElementById('chip-filter').style.display=active?'':'none';
+
+  const res=S.jobs.filter(j=>{
+    if(q && !j.addr.toLowerCase().includes(q) && !j.suburb.toLowerCase().includes(q) && !(j.lot&&j.lot.toLowerCase().includes(q))) return false;
+    if(b && j.builder!==b) return false;
+    if(d && j.developer!==d) return false;
+    if(s && j.status!==s) return false;
+    return true;
+  });
+
+  renderMarkers(res);
+  document.getElementById('filter-count').textContent=active?res.length+' result'+(res.length!==1?'s':''):'';
+  document.getElementById('filter-list').innerHTML=res.slice(0,30).map(j=>`
+    <div class="lot-item" onclick="flyTo(${j.lat},${j.lng},'${j.id}')">
+      <span class="badge ${j.status}">${j.status}</span>
+      <div><div style="font-weight:500">${j.addr}</div><div style="color:var(--color-text-secondary);font-size:10px">${j.suburb} · ${bName(j.builder)}</div></div>
+    </div>`).join('');
+}
+
+function clearFilter() {
+  ['f-q'].forEach(id=>document.getElementById(id).value='');
+  ['f-builder','f-developer','f-status'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('chip-filter').style.display='none';
+  document.getElementById('filter-count').textContent='';
+  document.getElementById('filter-list').innerHTML='';
+  renderMarkers(S.jobs);
+}
+
+let pickCoord = null;
+function togglePickMode() {
+  S.picking = !S.picking;
+  document.getElementById('btn-pick-mode').classList.toggle('active',S.picking);
+  document.getElementById('pick-banner').classList.toggle('on',S.picking);
+  document.getElementById('map-wrap').classList.toggle('picking-mode',S.picking);
+}
+
+map.on('click', function(e) {
+  if (S.picking) {
+    pickCoord = e.latlng;
+    S.picking = false;
+    document.getElementById('btn-pick-mode').classList.remove('active');
+    document.getElementById('pick-banner').classList.remove('on');
+    document.getElementById('map-wrap').classList.remove('picking-mode');
+    openAddModal(null, e.latlng);
+  }
+});
+
+function openAddModal(jobId, coord) {
+  S.editing = jobId;
+  document.getElementById('modal-title').innerHTML = jobId ? '<i class="ti ti-edit" style="margin-right:6px"></i>Edit job' : '<i class="ti ti-map-pin" style="margin-right:6px"></i>Add job';
+  document.getElementById('del-btn').style.display = jobId ? '' : 'none';
+  populateSelects();
+  if (jobId) {
+    const j=S.jobs.find(x=>x.id===jobId);
+    document.getElementById('n-addr').value=j.addr;
+    document.getElementById('n-suburb').value=j.suburb;
+    document.getElementById('n-lot').value=j.lot||'';
+    document.getElementById('n-lat').value=j.lat;
+    document.getElementById('n-lng').value=j.lng;
+    document.getElementById('n-builder').value=j.builder||'';
+    document.getElementById('n-developer').value=j.developer||'';
+    document.getElementById('n-status').value=j.status;
+    document.getElementById('n-date').value=j.date||'';
+    document.getElementById('n-notes').value=j.notes||'';
+    document.getElementById('lot-banner').style.display='none';
+  } else {
+    ['n-addr','n-suburb','n-lot','n-notes'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('n-builder').value='';
+    document.getElementById('n-developer').value='';
+    document.getElementById('n-status').value='completed';
+    document.getElementById('n-date').value=new Date().toISOString().slice(0,10);
+    document.getElementById('n-notes').value='';
+    if (coord) {
+      document.getElementById('n-lat').value=coord.lat.toFixed(6);
+      document.getElementById('n-lng').value=coord.lng.toFixed(6);
+      document.getElementById('lot-banner').style.display='flex';
+      document.getElementById('lot-banner-txt').textContent=`Map location: ${coord.lat.toFixed(5)}, ${coord.lng.toFixed(5)}`;
+    } else {
+      document.getElementById('n-lat').value='';
+      document.getElementById('n-lng').value='';
+      document.getElementById('lot-banner').style.display='none';
+    }
+  }
+  document.getElementById('add-modal').classList.add('on');
+}
+
+function saveJob() {
+  const addr=document.getElementById('n-addr').value.trim();
+  const suburb=document.getElementById('n-suburb').value.trim();
+  const lat=parseFloat(document.getElementById('n-lat').value);
+  const lng=parseFloat(document.getElementById('n-lng').value);
+  if (!addr||!suburb||isNaN(lat)||isNaN(lng)) { notify('Fill in address, suburb and coordinates'); return; }
+  if (S.editing) {
+    const j=S.jobs.find(x=>x.id===S.editing);
+    if(j){j.addr=addr;j.suburb=suburb;j.lot=document.getElementById('n-lot').value;j.lat=lat;j.lng=lng;j.builder=document.getElementById('n-builder').value;j.developer=document.getElementById('n-developer').value;j.status=document.getElementById('n-status').value;j.date=document.getElementById('n-date').value;j.notes=document.getElementById('n-notes').value;}
+  } else {
+    S.jobs.push({id:'j'+Date.now(),addr,suburb,lot:document.getElementById('n-lot').value,lat,lng,builder:document.getElementById('n-builder').value,developer:document.getElementById('n-developer').value,status:document.getElementById('n-status').value,date:document.getElementById('n-date').value,notes:document.getElementById('n-notes').value});
+  }
+  persist(); closeModal('add-modal'); fullRefresh(); notify('Job saved');
+}
+
+function deleteJob() {
+  if (!S.editing) return;
+  S.jobs = S.jobs.filter(j=>j.id!==S.editing);
+  persist(); closeModal('add-modal'); fullRefresh(); notify('Job deleted');
+}
+
+const eColors=['#2980b9','#8e44ad','#16a085','#d35400','#c0392b','#1a7a5e','#2471a3','#784212'];
+function addEntity(type) {
+  const id=type==='builder'?'new-b':'new-d';
+  const name=document.getElementById(id).value.trim();
+  if(!name){notify('Enter a name');return;}
+  const key=type+'s';
+  S[key].push({id:type[0]+Date.now(),name,color:eColors[S[key].length%eColors.length]});
+  document.getElementById(id).value='';
+  persist(); populateSelects(); renderManageLists(); renderEntityLayers(type); notify(name+' added');
+}
+function removeEntity(type,eid) {
+  if(S.jobs.some(j=>j[type]===eid)){notify('In use — reassign jobs first');return;}
+  S[type+'s']=S[type+'s'].filter(e=>e.id!==eid);
+  persist(); populateSelects(); renderManageLists(); renderEntityLayers(type);
+}
+
+function renderManageLists() {
+  ['builder','developer'].forEach(type=>{
+    const el=document.getElementById('m-'+type[0]+'-list');
+    const items=S[type+'s'];
+    if(!items.length){el.innerHTML='<div class="empty">None added yet</div>';return;}
+    el.innerHTML=items.map(e=>{
+      const cnt=S.jobs.filter(j=>j[type]===e.id).length;
+      return `<div class="entity-row"><div class="av" style="background:${e.color}22;color:${e.color}">${e.name.slice(0,2).toUpperCase()}</div><span style="flex:1">${e.name} <span style="color:var(--color-text-secondary);font-size:10px">(${cnt})</span></span><button class="btn del" onclick="removeEntity('${type}','${e.id}')" style="padding:3px 7px;font-size:11px"><i class="ti ti-trash" aria-hidden="true"></i></button></div>`;
+    }).join('');
+  });
+}
+
+function openManage() { renderManageLists(); document.getElementById('manage-modal').classList.add('on'); }
+function closeModal(id) { document.getElementById(id).classList.remove('on'); }
+document.querySelectorAll('.modal-bg').forEach(bg=>bg.addEventListener('click',e=>{if(e.target===bg)closeModal(bg.id);}));
+
+function toggleSidebar() {
+  const sb=document.getElementById('sidebar');
+  sb.classList.toggle('collapsed');
+  document.getElementById('sb-ico').className=sb.classList.contains('collapsed')?'ti ti-chevron-right':'ti ti-chevron-left';
+  setTimeout(()=>map.invalidateSize(),250);
+}
+
+function stab(name,el) {
+  document.querySelectorAll('.tab-bar .stab').forEach(t=>t.classList.remove('on'));
+  el.classList.add('on');
+  document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('on'));
+  document.getElementById('tp-'+name).classList.add('on');
+  if(name==='stats') renderStats();
+}
+
+function mtab(name,el) {
+  document.querySelectorAll('#manage-modal .stab').forEach(t=>t.classList.remove('on'));
+  el.classList.add('on');
+  document.getElementById('m-builders').style.display=name==='builders'?'':'none';
+  document.getElementById('m-developers').style.display=name==='developers'?'':'none';
+}
+
+function toggleSec(hdr) {
+  const ico=hdr.querySelector('.ti-chevron-down');
+  if(ico) ico.style.transform=ico.style.transform?'':'rotate(180deg)';
+  const body=hdr.nextElementSibling;
+  if(body) body.style.display=body.style.display==='none'?'':'none';
+}
+
+function notify(msg) {
+  const n=document.getElementById('notif');
+  n.textContent=msg; n.classList.add('on');
+  setTimeout(()=>n.classList.remove('on'),2500);
+}
+
+document.addEventListener('click',e=>{
+  const sr=document.getElementById('srch-results');
+  if(!e.target.closest('.srch-box')) sr.style.display='none';
+});
+
+fullRefresh();
+</script>
